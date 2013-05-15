@@ -1,4 +1,4 @@
-Next release:
+Future:
  * Move code used for FileBrowser to Advanced List view (Copy CF's Mixer)
  * Use new AdvancedList view for Select
 
@@ -12,5 +12,5 @@ Next release:
  * EPG / RadioEPG?
 
 
-Can't be done (wishlist):
+Can't be done:
  * Utilize CF's volume slider at the bottom (Boards own volume control)
