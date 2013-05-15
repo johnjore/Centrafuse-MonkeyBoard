@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ArrayOfBlackList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <BlackList>
+    <DABLongName>GorillaDanceHits</DABLongName>
+  </BlackList>
+  <BlackList>
+    <DABLongName>Triple M</DABLongName>
+  </BlackList>
+  <BlackList>
+    <DABLongName>LoveLand</DABLongName>
+  </BlackList>
+  <BlackList>
+    <DABLongName>Test A</DABLongName>
+  </BlackList>
+</ArrayOfBlackList>

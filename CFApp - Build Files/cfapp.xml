@@ -1,0 +1,30 @@
+<CFAPP>
+  <APPDATA>
+    <APPID>0</APPID>
+    <APPNAME>DABFMMonkey</APPNAME>
+    <APPLOCATION>[CFAPPDIR]\Plugins\DABFMMonkey</APPLOCATION>
+    <APPTYPE>PLUGIN</APPTYPE>
+    <VERSION>4.2.7.0</VERSION>
+    <REQUIRESRESTART>False</REQUIRESRESTART>
+  </APPDATA>
+  <APPFILES>
+    <FILENAME register="false" overwrite="true" source="Textfiles\readme.txt" destination="[CFAPPDIR]\Plugins\DABFMMonkey\readme.txt" />
+    <FILENAME register="false" overwrite="true" source="Textfiles\license.txt" destination="[CFAPPDIR]\Plugins\DABFMMonkey\license.txt" />
+    <FILENAME register="false" overwrite="true" source="Textfiles\notice.txt" destination="[CFAPPDIR]\Plugins\DABFMMonkey\notice.txt" />
+    <FILENAME register="false" overwrite="true" source="Textfiles\gpl.txt" destination="[CFAPPDIR]\Plugins\DABFMMonkey\gpl.txt" />
+    <FILENAME register="false" overwrite="true" source="Textfiles\lgpl.txt" destination="[CFAPPDIR]\Plugins\DABFMMonkey\lgpl.txt" />
+    <FILENAME register="false" overwrite="true" source="DLL\keystonecomm.dll" destination="[CFAPPDIR]\Plugins\DABFMMonkey\keystonecomm.dll" />
+    <FILENAME register="false" overwrite="true" source="DLL\DABFMMonkey.dll" destination="[CFAPPDIR]\Plugins\DABFMMonkey\DABFMMonkey.dll" />
+    <FILENAME register="false" overwrite="true" source="DLL\Apache.NMS.dll" destination="[CFAPPDIR]\Plugins\DABFMMonkey\Apache.NMS.dll" />
+    <FILENAME register="false" overwrite="true" source="DLL\Apache.NMS.Stomp.dll" destination="[CFAPPDIR]\Plugins\DABFMMonkey\Apache.NMS.Stomp.dll" />
+    <FILENAME register="false" overwrite="true" source="Languages\DABFMMonkey.xml" destination="[CFAPPDIR]\Plugins\DABFMMonkey\Languages\DABFMMonkey.xml" />
+    <FILENAME register="false" overwrite="true" source="Skins\Clean\blacklist_false_icon.png" destination="[CFAPPDIR]\Plugins\DABFMMonkey\Skins\Clean\blacklist_false_icon.png" />
+    <FILENAME register="false" overwrite="true" source="Skins\Clean\blacklist_true_icon.png" destination="[CFAPPDIR]\Plugins\DABFMMonkey\Skins\Clean\blacklist_true_icon.png" />
+    <FILENAME register="false" overwrite="true" source="Skins\Clean\icon.png" destination="[CFAPPDIR]\Plugins\DABFMMonkey\Skins\Clean\icon.png" />
+    <FILENAME register="false" overwrite="true" source="Skins\Clean\skin.xml" destination="[CFAPPDIR]\Plugins\DABFMMonkey\Skins\Clean\skin.xml" />
+    <FILENAME register="false" overwrite="true" source="Skins\Clean\screens\mixer_down.png" destination="[CFAPPDIR]\Plugins\DABFMMonkey\Skins\Clean\screens\mixer_down.png" />
+    <FILENAME register="false" overwrite="true" source="Skins\Clean\screens\mixer_off.png" destination="[CFAPPDIR]\Plugins\DABFMMonkey\Skins\Clean\screens\mixer_off.png" />
+    <FILENAME register="false" overwrite="true" source="Skins\Clean\screens\radio_down.png" destination="[CFAPPDIR]\Plugins\DABFMMonkey\Skins\Clean\screens\radio_down.png" />
+    <FILENAME register="false" overwrite="true" source="Skins\Clean\screens\radio_off.png" destination="[CFAPPDIR]\Plugins\DABFMMonkey\Skins\Clean\screens\radio_off.png" />
+  </APPFILES>
+</CFAPP>

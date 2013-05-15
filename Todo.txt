@@ -1,0 +1,16 @@
+Next release:
+ * Move code used for FileBrowser to Advanced List view (Copy CF's Mixer)
+ * Use new AdvancedList view for Select
+
+ * Optimize I/O and reduce reading from disk
+ * Scrolling with pageup/down
+
+ * Fix thread so it can read init variable (Try re-using timer functions from Mixer area)
+
+ * BBE Presets?
+
+ * EPG / RadioEPG?
+
+
+Can't be done (wishlist):
+ * Utilize CF's volume slider at the bottom (Boards own volume control)

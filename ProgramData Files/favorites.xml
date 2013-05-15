@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ArrayOfStation xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Station>
+    <Band>DAB_BAND</Band>
+    <Frequency>1</Frequency>
+    <FavoriteName>GorillaDanceHits (DAB)</FavoriteName>
+    <DABLongName>GorillaDanceHits</DABLongName>
+  </Station>
+  <Station>
+    <Band>DAB_BAND</Band>
+    <Frequency>4</Frequency>
+    <FavoriteName>Triple M (DAB)</FavoriteName>
+    <DABLongName>Triple M</DABLongName>
+  </Station>
+  <Station>
+    <Band>DAB_BAND</Band>
+    <Frequency>2</Frequency>
+    <FavoriteName>ZOO MusicVariety (DAB)</FavoriteName>
+    <DABLongName>ZOO MusicVariety</DABLongName>
+  </Station>
+  <Station>
+    <Band>DAB_BAND</Band>
+    <Frequency>43</Frequency>
+    <FavoriteName>ABCRadioNational (DAB)</FavoriteName>
+    <DABLongName>ABCRadioNational</DABLongName>
+  </Station>
+  <Station>
+    <Band>DAB_BAND</Band>
+    <Frequency>6</Frequency>
+    <FavoriteName>RADAR-New Music (DAB)</FavoriteName>
+    <DABLongName>RADAR-New Music</DABLongName>
+  </Station>
+  <Station>
+    <Band>DAB_BAND</Band>
+    <Frequency>11</Frequency>
+    <FavoriteName>SkySportsRadio1 (DAB)</FavoriteName>
+    <DABLongName>SkySportsRadio1</DABLongName>
+  </Station>
+  <Station>
+    <Band>DAB_BAND</Band>
+    <Frequency>14</Frequency>
+    <FavoriteName>Fine Music (DAB)</FavoriteName>
+    <DABLongName>Fine Music</DABLongName>
+  </Station>
+</ArrayOfStation>

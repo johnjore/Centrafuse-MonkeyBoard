@@ -1,0 +1,214 @@
+﻿<!-- Take care when modifying. Many items are case sensitive -->
+
+<SKIN id="Clean" width="800" height="480" comment="DAB FM Monkeyboard (6th Logic) Radio Plugin by Kala Solutions Pty Ltd">
+  <IMAGES>
+    <IMAGE id="Radio_Off" path="screens/Radio_off.png" />
+    <IMAGE id="Radio_Down" path="screens/Radio_down.png" />
+    <IMAGE id="MixerOff" path="screens/mixer_off.png" />
+    <IMAGE id="MixerDown" path="screens/mixer_down.png" />
+  </IMAGES>
+  <SECTIONS>
+    <SECTION id="DABFMMonkey" effect="ToApp" bounds="0;86;800;306" off="Radio_Off" down="Radio_Down">
+      <CONTROLS>
+        <CONTROL type="Button" id="Scan" 		bounds="10;195;113;105" fontclass="Button20" 	tabindex="4" 	enabled="true" fontstyle="size:26px;yoffset:28" textenable="True" text="AppLang.Setup.Scan" />
+        <CONTROL type="Button" id="BackFineTune" 	bounds="565;153;71;71" 	fontclass="Standard26"	tabindex="8" 	enabled="true" textenable="False" />
+        <CONTROL type="Button" id="ForwardFineTune"	bounds="637;153;71;71" 	fontclass="Standard26" 	tabindex="9" 	enabled="true" textenable="False" />
+        <CONTROL type="Button" id="PageUp"		bounds="709;8;81;145" 	fontclass="Standard26" 	tabindex="11" 	enabled="true" textenable="False" forcemouseup="true" />
+        <CONTROL type="Button" id="PageDown" 		bounds="709;153;81;145" fontclass="Standard26" 	tabindex="12" 	enabled="true" textenable="False" forcemouseup="true" />
+        <CONTROL type="Button" id="Delete" 		bounds="565;225;143;71" fontclass="Standard26" 	tabindex="10"	enabled="true" textenable="False" action="Delete" holdcmlaction="BlackList" holdtime="2"/>
+
+        <CONTROL type="Button" id="BackTune"    	bounds="565;81;71;72" 	fontclass="Standard26" 	tabindex="6" 	enabled="true" textenable="False" action="BackTune" />
+        <CONTROL type="Button" id="ForwardTune" 	bounds="637;81;71;72" 	fontclass="Standard26" 	tabindex="7" 	enabled="true" textenable="False" action="ForwardTune" />
+        <CONTROL type="Button" id="DABFM" 		bounds="10;7;113;68"  	fontclass="Standard26" 	tabindex="1" 	enabled="true" textenable="True"  action="DABFM" 	holdcmlaction="BBE" 		holdtime="2" fontstyle="style:bold;yoffset:6px;case:default;wrap:true" text="" />
+        <CONTROL type="Button" id="Add" 		bounds="565;8;143;72"	fontclass="Standard26" 	tabindex="5" 	enabled="true" textenable="False" action="Add" 		holdcmlaction="PayPal" 		holdtime="2" />
+        <CONTROL type="Button" id="TuneSelect"		bounds="10;90;113;105" 	fontclass="Button20"	tabindex="2" 	enabled="true" textenable="True"  action="TuneSelect"	holdcmlaction="SetStereoMode"	holdtime="2" fontstyle="style:normal;yoffset:28" text="AppLang.Setup.Tune" />
+
+        <!--SLSPicture bound definitions are case sensitive. Lower case only -->
+        <CONTROL type="PictureBox" id="SLSPicture" normal_bounds="136;8;428;219" centered_bounds="136;39;428;219" stretched_bounds="136;8;428;289" image="" enabled="false" />
+
+        <CONTROL type="AdvancedList" id="MainPanel" bounds="134;8;431;288">
+          <LAYOUT>
+            <DATACOLUMNS>
+              <DATACOLUMN name="DisplayName" description="Saved preset name" />
+            </DATACOLUMNS>
+            <STYLES include=".\Skins\Clean\listview\CommonStyles.xml">
+              <STYLE id="Title.Red" color="#ff0000" hAlignment="Left" vAlignment="Middle" leftIndent="0" rightIndent="0" fontId="1" trimming="true" />
+	      <STYLE id="Title.Green" color="#00ff00" hAlignment="Left" vAlignment="Middle" leftIndent="0" rightIndent="0" fontId="1" trimming="true" />
+            </STYLES>
+            <FONTS include=".\Skins\Clean\listview\CommonFonts.xml" />
+            <TEMPLATES>
+	      <!-- Dummy entry as CF requires a template by the name 'default' to avoid triggering events in errors.log -->
+              <TEMPLATE id="default" selectable="false"><ITEMGROUP type="Default"></ITEMGROUP></TEMPLATE>
+
+              <TEMPLATE id="4_default" selectable="true" layout="Stacked" baseSize="431;288" scrollbarStyleId="Scrollbar">
+                <ITEMGROUP type="Default" size="431;72">
+                  <ITEM id="DisplayName" type="Text" position="3;22" size="365;32" dataSource="DisplayName" styleId="Title" />
+                  <ITEM id="Line" type="Image" position="0;71" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+                <ITEMGROUP type="Selected" size="431;72">
+                  <ITEM id="Backgnd" type="Image" position="0;0" size="418;72" dataSource="cache:SelectionBar.png" styleId="Image.Fit" />
+                  <ITEM id="DisplayName" type="Text" position="3;22" size="365;32" dataSource="DisplayName" styleId="Title.Hi" />
+                  <ITEM id="Line" type="Image" position="0;71" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+              </TEMPLATE>
+              <TEMPLATE id="4_deletemode" selectable="true" layout="Stacked" baseSize="431;288" scrollbarStyleId="Scrollbar">
+                <ITEMGROUP type="Default" size="431;72">
+                  <ITEM id="DisplayName" type="Text" position="3;22" size="365;32" dataSource="DisplayName" styleId="Title.Red" />
+                  <ITEM id="Delete" linkId="Delete" type="Image" position="377;18" size="32;32" dataSource="cache:delete_icon.png" styleId="Image.Fit" />
+                  <ITEM id="Line" type="Image" position="0;71" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+                <ITEMGROUP type="Selected" size="431;72">
+                  <ITEM id="Backgnd" type="Image" position="0;0" size="418;72" dataSource="cache:SelectionBar.png" styleId="Image.Fit" />
+                  <ITEM id="DisplayName" type="Text" position="3;22" size="365;32" dataSource="DisplayName" styleId="Title.Hi" />
+                  <ITEM id="Delete" linkId="Delete" type="Image" position="377;18" size="32;32" dataSource="cache:delete_icon_down.png" styleId="Image.Fit" />
+                  <ITEM id="Line" type="Image" position="0;71" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+              </TEMPLATE>
+              <TEMPLATE id="4_blacklist" selectable="true" layout="Stacked" baseSize="431;288" scrollbarStyleId="Scrollbar">
+                <ITEMGROUP type="Default" size="431;72">
+                  <ITEM id="DisplayName" type="Text" position="3;22" size="365;32" dataSource="DisplayName" styleId="Title.Green" />
+                  <ITEM id="Blacklist" linkId="Blacklist" type="Image" position="377;18" size="32;32" dataSource="Blacklisted{blacklist_[value]_icon.png}" styleId="Image.Fit" />
+                  <ITEM id="Line" type="Image" position="0;71" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+                <ITEMGROUP type="Selected" size="431;72">
+                  <ITEM id="Backgnd" type="Image" position="0;0" size="418;72" dataSource="cache:SelectionBar.png" styleId="Image.Fit" />
+                  <ITEM id="DisplayName" type="Text" position="3;22" size="365;32" dataSource="DisplayName" styleId="Title.Hi" />
+                  <ITEM id="Blacklist" linkId="Blacklist" type="Image" position="377;18" size="32;32" dataSource="Blacklisted{blacklist_[value]_icon.png}" styleId="Image.Fit" />
+                  <ITEM id="Line" type="Image" position="0;71" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+	      </TEMPLATE>
+              <TEMPLATE id="6_default" selectable="true" layout="Stacked" baseSize="431;288" scrollbarStyleId="Scrollbar">
+                <ITEMGROUP type="Default" size="431;48">
+                  <ITEM id="DisplayName" type="Text" position="3;12" size="365;32" dataSource="DisplayName" styleId="Title" />
+                  <ITEM id="Line" type="Image" position="0;47" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+                <ITEMGROUP type="Selected" size="431;48">
+                  <ITEM id="Backgnd" type="Image" position="0;0" size="418;48" dataSource="cache:SelectionBar.png" styleId="Image.Fit" />
+                  <ITEM id="DisplayName" type="Text" position="3;12" size="365;32" dataSource="DisplayName" styleId="Title.Hi" />
+                  <ITEM id="Line" type="Image" position="0;47" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+              </TEMPLATE>
+              <TEMPLATE id="6_deletemode" selectable="true" layout="Stacked" baseSize="431;288" scrollbarStyleId="Scrollbar">
+                <ITEMGROUP type="Default" size="431;48">
+                  <ITEM id="DisplayName" type="Text" position="3;12" size="365;32" dataSource="DisplayName" styleId="Title.Red" />
+                  <ITEM id="Delete" linkId="Delete" type="Image" position="377;8" size="32;32" dataSource="cache:delete_icon.png" styleId="Image.Fit" />
+                  <ITEM id="Line" type="Image" position="0;47" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+                <ITEMGROUP type="Selected" size="431;48">
+                  <ITEM id="Backgnd" type="Image" position="0;0" size="418;48" dataSource="cache:SelectionBar.png" styleId="Image.Fit" />
+                  <ITEM id="DisplayName" type="Text" position="3;12" size="365;32" dataSource="DisplayName" styleId="Title.Hi" />
+                  <ITEM id="Delete" linkId="Delete" type="Image" position="377;8" size="32;32" dataSource="cache:delete_icon_down.png" styleId="Image.Fit" />
+                  <ITEM id="Line" type="Image" position="0;47" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+              </TEMPLATE>
+              <TEMPLATE id="6_blacklist" selectable="true" layout="Stacked" baseSize="431;288" scrollbarStyleId="Scrollbar">
+                <ITEMGROUP type="Default" size="431;48">
+                  <ITEM id="DisplayName" type="Text" position="3;12" size="365;32" dataSource="DisplayName" styleId="Title.Green" />
+                  <ITEM id="Blacklist" linkId="Blacklist" type="Image" position="377;8" size="32;32" dataSource="Blacklisted{blacklist_[value]_icon.png}" styleId="Image.Fit" />
+                  <ITEM id="Line" type="Image" position="0;47" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+                <ITEMGROUP type="Selected" size="431;48">
+                  <ITEM id="Backgnd" type="Image" position="0;0" size="418;48" dataSource="cache:SelectionBar.png" styleId="Image.Fit" />
+                  <ITEM id="DisplayName" type="Text" position="3;12" size="365;32" dataSource="DisplayName" styleId="Title.Hi" />
+                  <ITEM id="Blacklist" linkId="Blacklist" type="Image" position="377;8" size="32;32" dataSource="Blacklisted{blacklist_[value]_icon.png}" styleId="Image.Fit" />
+                  <ITEM id="Line" type="Image" position="0;47" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+	      </TEMPLATE>
+              <TEMPLATE id="8_default" selectable="true" layout="Stacked" baseSize="431;288" scrollbarStyleId="Scrollbar">
+                <ITEMGROUP type="Default" size="431;36">
+                  <ITEM id="DisplayName" type="Text" position="3;6" size="365;32" dataSource="DisplayName" styleId="Title" />
+                  <ITEM id="Line" type="Image" position="0;35" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+                <ITEMGROUP type="Selected" size="431;36">
+                  <ITEM id="Backgnd" type="Image" position="0;0" size="418;36" dataSource="cache:SelectionBar.png" styleId="Image.Fit" />
+                  <ITEM id="DisplayName" type="Text" position="3;6" size="365;32" dataSource="DisplayName" styleId="Title.Hi" />
+                  <ITEM id="Line" type="Image" position="0;35" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+              </TEMPLATE>
+              <TEMPLATE id="8_deletemode" selectable="true" layout="Stacked" baseSize="431;288" scrollbarStyleId="Scrollbar">
+                <ITEMGROUP type="Default" size="431;36">
+                  <ITEM id="DisplayName" type="Text" position="3;6" size="365;32" dataSource="DisplayName" styleId="Title.Red" />
+                  <ITEM id="Delete" linkId="Delete" type="Image" position="377;2" size="32;32" dataSource="cache:delete_icon.png" styleId="Image.Fit" />
+                  <ITEM id="Line" type="Image" position="0;35" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+                <ITEMGROUP type="Selected" size="431;36">
+                  <ITEM id="Backgnd" type="Image" position="0;0" size="418;36" dataSource="cache:SelectionBar.png" styleId="Image.Fit" />
+                  <ITEM id="DisplayName" type="Text" position="3;6" size="365;32" dataSource="DisplayName" styleId="Title.Hi" />
+                  <ITEM id="Delete" linkId="Delete" type="Image" position="377;2" size="32;32" dataSource="cache:delete_icon_down.png" styleId="Image.Fit" />
+                  <ITEM id="Line" type="Image" position="0;35" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+              </TEMPLATE>
+              <TEMPLATE id="8_blacklist" selectable="true" layout="Stacked" baseSize="431;288" scrollbarStyleId="Scrollbar">
+                <ITEMGROUP type="Default" size="431;36">
+                  <ITEM id="DisplayName" type="Text" position="3;6" size="365;32" dataSource="DisplayName" styleId="Title.Green" />
+                  <ITEM id="Blacklist" linkId="Blacklist" type="Image" position="377;2" size="32;32" dataSource="Blacklisted{blacklist_[value]_icon.png}" styleId="Image.Fit" />
+                  <ITEM id="Line" type="Image" position="0;35" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+                <ITEMGROUP type="Selected" size="431;36">
+                  <ITEM id="Backgnd" type="Image" position="0;0" size="418;36" dataSource="cache:SelectionBar.png" styleId="Image.Fit" />
+                  <ITEM id="DisplayName" type="Text" position="3;6" size="365;32" dataSource="DisplayName" styleId="Title.Hi" />
+                  <ITEM id="Blacklist" linkId="Blacklist" type="Image" position="377;2" size="32;32" dataSource="Blacklisted{blacklist_[value]_icon.png}" styleId="Image.Fit" />
+                  <ITEM id="Line" type="Image" position="0;35" size="419;1" dataSource="cache:Separator.png" styleId="Image.Fit" enabled="true" />
+                </ITEMGROUP>
+	      </TEMPLATE>
+            </TEMPLATES>
+          </LAYOUT>
+        </CONTROL> 
+      </CONTROLS>
+    </SECTION>
+    <!--Mixer Controls-->
+    <SECTION id="Mixer" icon="Mixer" effect="ToApp" bounds="0;88;800;304" off="MixerOff" down="MixerDown">
+      <CONTROLS>
+        <CONTROL type="Button" id="Off"		bounds="10;14;118;68" fontclass="Button20" fontstyle="yoffset:3;case:default" textenable="True" text="" tabindex="1" enabled="true" action="MixerOff"/>
+        <CONTROL type="Button" id="BBE"		bounds="10;83;118;68" fontclass="Button20" fontstyle="yoffset:3;case:default" textenable="True" text="" tabindex="2" enabled="true" action="MixerBBE" />
+        <CONTROL type="Button" id="EQ"		bounds="10;152;118;68" fontclass="Button20" fontstyle="yoffset:3;case:default;wrap:true" textenable="True" text="" tabindex="3" enabled="true" action="MixerEQ" />
+	<CONTROL type="Button" id="Exit"	bounds="10;221;118;68" fontclass="Button20" fontstyle="yoffset:3;case:default" textenable="True" text="" tabindex="6" enabled="true" action="MixerExit" />
+
+	<!--BBE Controls-->
+        <CONTROL type="Slider" id="Slider_BBELo" bounds="129;42;61;233" max="25" min="0" tabindex="7" orientation="vertical" sliderenabled="true" slideralignment="bottom" sliderbackground="SliderBackground" sliderforeground="" slideroff="SliderOff" sliderdown="SliderDown" enabled="True" autoload="True" />
+        <CONTROL type="Label" id="Value_BBELo" bounds="129;270;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;case:default" autoload="True" enabled="False" />
+        <CONTROL type="Label" id="Label_BBELo" bounds="129;12;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;wrap:true;case:default" autoload="True" enabled="False" />
+
+        <CONTROL type="Slider" id="Slider_BBEHi" bounds="190;42;61;233" max="25" min="0" tabindex="8" orientation="vertical" sliderenabled="true" slideralignment="bottom" sliderbackground="SliderBackground" sliderforeground="" slideroff="SliderOff" sliderdown="SliderDown" enabled="true" autoload="true" />
+        <CONTROL type="Label" id="Value_BBEHi" bounds="190;270;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;case:default" autoload="True" enabled="False" />
+        <CONTROL type="Label" id="Label_BBEHi" bounds="190;12;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;wrap:true;case:default" autoload="True" enabled="False" />
+
+        <CONTROL type="Slider" id="Slider_BBECFreq" bounds="251;42;61;233" max="2" min="0" tabindex="9" orientation="vertical" sliderenabled="true" slideralignment="bottom" sliderbackground="SliderBackground" sliderforeground="" slideroff="SliderOff" sliderdown="SliderDown" enabled="true" autoload="True" />
+        <CONTROL type="Label" id="Value_BBECFreq" bounds="251;270;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;case:default" autoload="True" enabled="False" />
+        <CONTROL type="Label" id="Label_BBECFreq" bounds="251;12;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;wrap:true;case:default" autoload="True" enabled="False" />
+
+        <CONTROL type="Slider" id="Slider_BBEMachFreq" bounds="312;42;61;233" max="4" min="0" tabindex="10" orientation="vertical" sliderenabled="true" slideralignment="bottom" sliderbackground="SliderBackground" sliderforeground="" slideroff="SliderOff" sliderdown="SliderDown" enabled="True" autoload="True" />
+        <CONTROL type="Label" id="Value_BBEMachFreq" bounds="312;270;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;case:default" autoload="True" enabled="False" />
+        <CONTROL type="Label" id="Label_BBEMachFreq" bounds="312;12;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;wrap:true;case:default" autoload="True" enabled="False" />
+
+        <CONTROL type="Slider" id="Slider_BBEMachGain" bounds="373;42;61;233" max="4" min="0" tabindex="11" orientation="vertical" sliderenabled="true" slideralignment="bottom" sliderbackground="SliderBackground" sliderforeground="" slideroff="SliderOff" sliderdown="SliderDown" enabled="true" autoload="True" />
+        <CONTROL type="Label" id="Value_BBEMachGain" bounds="373;270;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;case:default" autoload="True" enabled="False" />
+        <CONTROL type="Label" id="Label_BBEMachGain" bounds="373;12;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;wrap:true;case:default" autoload="True" enabled="False" />
+
+        <CONTROL type="Slider" id="Slider_BBEMachQ" bounds="434;42;61;233" max="2" min="0" tabindex="12" orientation="vertical" sliderenabled="true" slideralignment="bottom" sliderbackground="SliderBackground" sliderforeground="" slideroff="SliderOff" sliderdown="SliderDown" enabled="true" autoload="True" />
+        <CONTROL type="Label" id="Value_BBEMachQ" bounds="434;270;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;case:default" autoload="True" enabled="False" />
+        <CONTROL type="Label" id="Label_BBEMachQ" bounds="434;12;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;wrap:true;case:default" autoload="True" enabled="False" />
+
+        <CONTROL type="Slider" id="Slider_BBESurr" bounds="495;42;61;233" max="11" min="0" tabindex="13" orientation="vertical" sliderenabled="true" slideralignment="bottom" sliderbackground="SliderBackground" sliderforeground="" slideroff="SliderOff" sliderdown="SliderDown" enabled="true" autoload="True" />
+        <CONTROL type="Label" id="Value_BBESurr" bounds="495;270;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;case:default" autoload="True" enabled="False" />
+        <CONTROL type="Label" id="Label_BBESurr" bounds="495;12;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;wrap:true;case:default" autoload="True" enabled="False" />
+
+        <CONTROL type="Slider" id="Slider_BBEMp" bounds="556;42;61;233" max="11" min="0" tabindex="14" orientation="vertical" sliderenabled="true" slideralignment="bottom" sliderbackground="SliderBackground" sliderforeground="" slideroff="SliderOff" sliderdown="SliderDown" enabled="true" autoload="True" />
+        <CONTROL type="Label" id="Value_BBEMp" bounds="556;270;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;case:default" autoload="True" enabled="False" />
+        <CONTROL type="Label" id="Label_BBEMp" bounds="556;12;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;wrap:true;case:default" autoload="True" enabled="False" />
+
+        <CONTROL type="Slider" id="Slider_BBEHpF" bounds="617;42;61;233" max="26" min="2" tabindex="15" orientation="vertical" sliderenabled="true" slideralignment="bottom" sliderbackground="SliderBackground" sliderforeground="" slideroff="SliderOff" sliderdown="SliderDown" enabled="true" autoload="True" />
+        <CONTROL type="Label" id="Value_BBEHpF" bounds="617;270;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;case:default" autoload="True" enabled="False" />
+        <CONTROL type="Label" id="Label_BBEHpF" bounds="617;12;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;wrap:true;case:default" autoload="True" enabled="False" />
+
+        <CONTROL type="Slider" id="Slider_BBEHiMode" bounds="678;42;61;233" max="13" min="0" tabindex="16" orientation="vertical" sliderenabled="true" slideralignment="bottom" sliderbackground="SliderBackground" sliderforeground="" slideroff="SliderOff" sliderdown="SliderDown" enabled="true" autoload="True" />
+        <CONTROL type="Label" id="Value_BBEHiMode" bounds="678;270;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;case:default" autoload="True" enabled="False" />
+        <CONTROL type="Label" id="Label_BBEHiMode" bounds="678;12;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;wrap:true;case:default" autoload="True" enabled="False" />
+
+        <CONTROL type="Slider" id="Slider_HeadRoom" bounds="739;42;61;233" max="1" min="-12" tabindex="17" orientation="vertical" sliderenabled="true" slideralignment="bottom" sliderbackground="SliderBackground" sliderforeground="" slideroff="SliderOff" sliderdown="SliderDown" enabled="true" autoload="True" />
+        <CONTROL type="Label" id="Value_HeadRoom" bounds="739;270;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;case:default" autoload="True" enabled="False" />
+        <CONTROL type="Label" id="Label_Headroom" bounds="739;12;61;30" fontclass="Standard14" fontstyle="size:13px;color:#CCCCCC;style:bold;wrap:true;case:default" autoload="True" enabled="False" />
+      </CONTROLS>
+    </SECTION>
+  </SECTIONS>
+</SKIN>
