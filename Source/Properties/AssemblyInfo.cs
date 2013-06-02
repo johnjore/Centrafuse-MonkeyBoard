@@ -27,7 +27,7 @@ using System.Runtime.CompilerServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Kala Solutions Pty Ltd")]
 [assembly: AssemblyProduct("DABFMMonkey")]
-[assembly: AssemblyCopyright("Copyright \x00a9 Kala Solutions Pty Ltd")]
+[assembly: AssemblyCopyright("Copyright 2012, 2013, John Jore")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -36,6 +36,6 @@ using System.Runtime.CompilerServices;
 //      Minor Version 
 //      Build Number
 //      Revision
-[assembly: AssemblyVersion("4.2.7.0")]
+[assembly: AssemblyVersion("4.2.8.0")]
 [assembly: AssemblyDelaySign(false)]
-[assembly: AssemblyFileVersionAttribute("4.2.7.0")]
+[assembly: AssemblyFileVersionAttribute("4.2.8.0")]

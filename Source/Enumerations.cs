@@ -133,4 +133,13 @@ namespace DABFMMonkey
         Text = 0,
         Image = 1
     }
+
+    public enum ServCompType : sbyte
+    {
+        Undefined = -1,
+        DAB = 0,
+        DAB_plus = 1,
+        PacketData = 2,
+        DMB = 3
+    }
 }

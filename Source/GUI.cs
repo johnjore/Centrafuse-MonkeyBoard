@@ -612,11 +612,32 @@ namespace DABFMMonkey
 
                 //If no program name, use current freq
                 if ((strProgramName == "") && (intCurrentStation != 999)) strProgramName = intCurrentStation.ToString();
+                
 
                 //Append band
-                if (intDABFMMode == RADIO_TUNE_BAND.DAB_BAND) strProgramName = strProgramName + " (" + base.pluginLang.ReadField("/APPLANG/SETUP/DAB") + ")";
-                if (intDABFMMode == RADIO_TUNE_BAND.FM_BAND) strProgramName = strProgramName + " (" + base.pluginLang.ReadField("/APPLANG/SETUP/FM") + " / " + Math.Round((decimal)intCurrentStation / 1000, 2).ToString() + ")";
+                //DAB mode
+                if (intDABFMMode == RADIO_TUNE_BAND.DAB_BAND)
+                {                  
+                    //Get Service Type (DAB, DAB+, PacketData or DMB)
+                    ServCompType intServCompType = ServCompType.Undefined;
+                    try
+                    {
+                        if ((intCurrentStation != 999) && WaitForBoard()) intServCompType = (ServCompType)GetServCompType(intCurrentStation);
+                    }
+                    catch { WriteLog("Exception Thrown Getting Service Type"); }
 
+                    // We should only be in DAB or DAB+ mode as we dont know how to process the other modes...
+                    switch (intServCompType)
+                    {
+                        case ServCompType.DAB_plus: strProgramName = strProgramName + " (" + base.pluginLang.ReadField("/APPLANG/SETUP/DAB") + "+)";
+                            break;
+                        default: strProgramName = strProgramName + " (" + base.pluginLang.ReadField("/APPLANG/SETUP/DAB") + ")";
+                            break;
+                    }
+                }
+
+                //FM Mode
+                if (intDABFMMode == RADIO_TUNE_BAND.FM_BAND) strProgramName = strProgramName + " (" + base.pluginLang.ReadField("/APPLANG/SETUP/FM") + " / " + Math.Round((decimal)intCurrentStation / 1000, 2).ToString() + ")";
 
                 //If all ok, ask user for fav name
                 if ((intCurrentStation != 999) && (intDABFMMode != RADIO_TUNE_BAND.UNDEFINED))

@@ -238,6 +238,9 @@ namespace DABFMMonkey
         [DllImport(DABFMMonkeydll)]
         private static extern bool GetProgramInfo(UInt32 dabIndex, ref Byte ServiceComponentID, ref UInt32 ServiceID, ref UInt16 EnsembleID);
 
+        // Get the type of MOT application of the specified DAB channel.
+        [DllImport(DABFMMonkeydll)]
+        private static extern SByte GetServCompType(UInt32 dabIndex);
 #endregion
 
 #region 2nd Generation (Pro boards) DLL Imports
@@ -1681,6 +1684,13 @@ namespace DABFMMonkey
                 string temp_stationText = "";
                 try
                 {
+                    // If neither FM or DAB mode, we're not "Playing". Not sure how we got ourselves into this state, but its not a good place to be...
+                    if (intDABFMMode != RADIO_TUNE_BAND.FM_BAND && intDABFMMode != RADIO_TUNE_BAND.DAB_BAND)
+                    {
+                        base.CF_updateButtonText("DABFM", "N/A");
+                        base.CF_updateButtonText("TuneSelect", "N/A");
+                    }
+
                     //When in FM mode, this field is often blanked by screen refreshes
                     if (intDABFMMode == RADIO_TUNE_BAND.FM_BAND)
                     {
@@ -1714,7 +1724,6 @@ namespace DABFMMonkey
                             {
                                 base.CF_updateButtonText("DABFM", base.pluginLang.ReadField("/APPLANG/SETUP/DAB"));
                             }
-
                             WriteLog("EnsembleName: '" + strEnsembleName + "'");
                         }
                         catch { WriteLog("Exception Thrown - GetEnsembleName RDS Data"); }
@@ -1749,7 +1758,7 @@ namespace DABFMMonkey
                         }
                         else WriteLog("MOT: Not SlideShow Channel or RadioVIS enabled");
 
-                        //Get DataRate in DAB mode
+                        //Get DataRate
                         int intDataRate = -1;
                         try
                         {
