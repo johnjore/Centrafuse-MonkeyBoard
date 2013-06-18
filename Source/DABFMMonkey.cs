@@ -27,11 +27,10 @@ using System.Data;
 using System.Threading;
 using System.Xml;
 using System.IO;
-
 using System.Linq;
-
 using CFControlsExtender.Base;      //Advanced ListView
 using CFControlsExtender.Listview;  //Advanced ListView
+using System.Reflection;            //Extra debug information
 
 /*using System.Collections;
 using Microsoft.Win32;
@@ -116,7 +115,7 @@ namespace DABFMMonkey
 			{
                 // Call writeModuleLog() with the string startup() to keep only last 2 runtimes...                
                 // Note CF_loadConfig() must be called before WriteLog() can be used
-                WriteLog("CF_pluginInit() - start");
+                WriteLog("CF_pluginInit() - start");               
 
                 // Check pluginConfig file is valid
                 string ConfigFileName = CFTools.AppDataPath + PluginPath + ConfigurationFile;
@@ -141,6 +140,8 @@ namespace DABFMMonkey
 
                 // CF3_initPlugin() Will configure pluginConfig and pluginLang automatically. All plugins must call this method once
                 this.CF3_initPlugin("DABFMMonkey", true);
+
+                WriteLog("Assembly Version: '" + Assembly.GetEntryAssembly().GetName().Version.ToString() + "'");
 
                 //Initialise the advanced list
                 try
@@ -1177,114 +1178,120 @@ namespace DABFMMonkey
                 WriteLog("XML DisplayName : " + this.CF_params.displayName);
 
                 //Define Launch hotkey
-                try { strLaunchHotkey = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYLAUNCH"); }
-                catch { }
-                if (strLaunchHotkey != "")
+                string strHotkeyTemp = "";
+                try { strHotkeyTemp = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYLAUNCH"); }
+                catch { strHotkeyTemp = ""; }
+                if (strLaunchHotkey != strHotkeyTemp && strHotkeyTemp != "" && strHotkeyTemp != null)
                 {
+                    strLaunchHotkey = strHotkeyTemp;
                     WriteLog("Launch Hotkey is '" + strLaunchHotkey + "'");
                     CF_loadHotkey(strLaunchHotkey, "Centrafuse.CFActions.Plugin:" + PluginName);
                 }
-                else WriteLog("XML Launch Hotkey: None");
+                else WriteLog("XML Launch Hotkey: Unchanged or not set");
 
-                //Define strHotkeyLoadNextTrack hotkey                            
-                try { strHotkeyLoadNextTrack = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYLOADNEXTTRACK"); }
-                catch { }
-                if (strHotkeyLoadNextTrack != "")
+                //Define strHotkeyLoadNextTrack hotkey
+                try { strHotkeyTemp = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYLOADNEXTTRACK"); }
+                catch { strHotkeyTemp = ""; }
+                if (strHotkeyLoadNextTrack != strHotkeyTemp && strHotkeyTemp != "" && strHotkeyTemp != null)
                 {
+                    strHotkeyLoadNextTrack = strHotkeyTemp;
                     WriteLog("Load Next Track Hotkey is '" + strHotkeyLoadNextTrack + "'");
                     CF_loadHotkey(strHotkeyLoadNextTrack, "Centrafuse.CFActions.Plugin:" + PluginName + ",LoadNextTrack");
                 }
-                else WriteLog("XML Load Next Track Hotkey: None");
+                else WriteLog("XML Load Next Track Hotkey: Unchanged or not set");
 
                 //Define strHotkeyLoadPreviousTrack hotkey                          
-                try { strHotkeyLoadPreviousTrack = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYLOADPREVIOUSTRACK"); }
-                catch { }
-                if (strHotkeyLoadPreviousTrack != "")
+                try { strHotkeyTemp = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYLOADPREVIOUSTRACK"); }
+                catch { strHotkeyTemp = ""; }
+                if (strHotkeyLoadPreviousTrack != strHotkeyTemp && strHotkeyTemp != "" && strHotkeyTemp != null)
                 {
+                    strHotkeyLoadPreviousTrack = strHotkeyTemp;
                     WriteLog("Load Previous Track Hotkey is '" + strHotkeyLoadPreviousTrack + "'");
                     CF_loadHotkey(strHotkeyLoadPreviousTrack, "Centrafuse.CFActions.Plugin:" + PluginName + ",LoadPreviousTrack");
                 }
-                else WriteLog("XML Load Previous Track Hotkey: None");
+                else WriteLog("XML Load Previous Track Hotkey: Unchanged or not set");
 
                 //Define strHotkeyRadioSeekForward hotkey                            
-                try { strHotkeyRadioSeekForward = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYRADIOSEEKFORWARD"); }
-                catch { }
-                if (strHotkeyRadioSeekForward != "")
+                try { strHotkeyTemp = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYRADIOSEEKFORWARD"); }
+                catch { strHotkeyTemp = ""; }
+                if (strHotkeyRadioSeekForward != strHotkeyTemp && strHotkeyTemp != "" && strHotkeyTemp != null)
                 {
+                    strHotkeyRadioSeekForward = strHotkeyTemp;
                     WriteLog("Radio Seek Forward Hotkey is '" + strHotkeyRadioSeekForward + "'");
                     CF_loadHotkey(strHotkeyRadioSeekForward, "Centrafuse.CFActions.Plugin:" + PluginName + ",RadioSeekForward");
                 }
-                else WriteLog("XML Radio Seek Forward Hotkey: None");
+                else WriteLog("XML Radio Seek Forward Hotkey: Unchanged or not set");
 
                 //Define strHotkeyRadioSeekBack hotkey                            
-                try { strHotkeyRadioSeekBack = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYRADIOSEEKBACK"); }
-                catch { }
-                if (strHotkeyRadioSeekBack != "")
+                try { strHotkeyTemp = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYRADIOSEEKBACK"); }
+                catch { strHotkeyTemp = ""; }
+                if (strHotkeyRadioSeekBack != strHotkeyTemp && strHotkeyTemp != "" && strHotkeyTemp != null)
                 {
+                    strHotkeyRadioSeekBack = strHotkeyTemp;
                     WriteLog("Radio Seek Back Hotkey is '" + strHotkeyRadioSeekBack + "'");
                     CF_loadHotkey(strHotkeyRadioSeekBack, "Centrafuse.CFActions.Plugin:" + PluginName + ",RadioSeekBack");
                 }
-                else WriteLog("XML Radio Seek Back Hotkey: None");
+                else WriteLog("XML Radio Seek Back Hotkey: Unchanged or not set");
 
                 //Define strHotkeyFM hotkey                            
-                try { strHotkeyFM = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYFM"); }
-                catch { }
-                if (strHotkeyFM != "")
+                try { strHotkeyTemp = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYFM"); }
+                catch { strHotkeyTemp = ""; }
+                if (strHotkeyFM != strHotkeyTemp && strHotkeyTemp != "" && strHotkeyTemp != null)
                 {
+                    strHotkeyFM = strHotkeyTemp;
                     WriteLog("FM Hotkey is '" + strHotkeyFM + "'");
                     CF_loadHotkey(strHotkeyFM, "Centrafuse.CFActions.Plugin:" + PluginName + ",FM");
                 }
-                else WriteLog("XML FM Hotkey: None");
+                else WriteLog("XML FM Hotkey: Unchanged or not set");
 
                 //Define strHotkeyDAB hotkey                            
-                try { strHotkeyDAB = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYDAB"); }
-                catch { }
-                if (strHotkeyDAB != "")
+                try { strHotkeyTemp = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYDAB"); }
+                catch { strHotkeyTemp = ""; }
+                if (strHotkeyDAB != strHotkeyTemp && strHotkeyTemp != "" && strHotkeyTemp != null)
                 {
+                    strHotkeyDAB = strHotkeyTemp;
                     WriteLog("DAB Hotkey is '" + strHotkeyDAB + "'");
                     CF_loadHotkey(strHotkeyDAB, "Centrafuse.CFActions.Plugin:" + PluginName + ",DAB");
                 }
-                else WriteLog("XML DAB Hotkey: None");
+                else WriteLog("XML DAB Hotkey: Unchanged or not set");
 
                 //Define strHotkeyScan hotkey                            
-                try { strHotkeyScan = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYSCAN"); }
-                catch { }
-                if (strHotkeyScan != "")
+                try { strHotkeyTemp = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYSCAN"); }
+                catch { strHotkeyTemp = ""; }
+                if (strHotkeyScan != strHotkeyTemp && strHotkeyTemp != "" && strHotkeyTemp != null)
                 {
+                    strHotkeyScan = strHotkeyTemp;
                     WriteLog("Scan Hotkey is '" + strHotkeyScan + "'");
                     CF_loadHotkey(strHotkeyScan, "Centrafuse.CFActions.Plugin:" + PluginName + ",SCAN");
                 }
-                else WriteLog("XML Scan Hotkey: None");
+                else WriteLog("XML Scan Hotkey: Unchanged or not set");
 
                 //Define strHotkeyToggleDABFM hotkey                            
-                try { strHotkeyToggleDABFM = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYTOGGLEDABFM"); }
-                catch { }
-                if (strHotkeyToggleDABFM != "")
+                try { strHotkeyTemp = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/HOTKEYTOGGLEDABFM"); }
+                catch { strHotkeyTemp = ""; }
+                if (strHotkeyToggleDABFM != strHotkeyTemp && strHotkeyTemp != "" && strHotkeyTemp != null)
                 {
+                    strHotkeyToggleDABFM = strHotkeyTemp;
                     WriteLog("Toggle DAB / FM Hotkey is '" + strHotkeyToggleDABFM + "'");
                     CF_loadHotkey(strHotkeyToggleDABFM, "Centrafuse.CFActions.Plugin:" + PluginName + ",ToggleDABFM");
                 }
-                else WriteLog("XML Toggle DAB / FM Hotkey: None");
+                else WriteLog("XML Toggle DAB / FM Hotkey: Unchanged or not set");
                 
                 //Define HotkeyLoadPreset1-8 hotkeys                                
                 for (int p = 0; p < 8; p++)
-                {
-                    //WriteLog("aryHotkeyLoadPreset" + (p+1).ToString() + ": " + aryHotkeyLoadPreset[p]);
-
-                    string strHotkeyLoadPreset = "";
+                {                
                     try {
-                        strHotkeyLoadPreset = this.pluginLang.ReadField("/APPCONFIG/HOTKEYPRESET" + (p+1).ToString());
-                        if (strHotkeyLoadPreset != "" && strHotkeyLoadPreset != null) aryHotkeyLoadPreset[p] = strHotkeyLoadPreset;
+                        strHotkeyTemp = this.pluginLang.ReadField("/APPCONFIG/HOTKEYPRESET" + (p+1).ToString());
                     }
-                    catch 
-                    { }
+                    catch { strHotkeyTemp = ""; }
 
-                    if (aryHotkeyLoadPreset[p] != "")
+                    if (aryHotkeyLoadPreset[p] != strHotkeyTemp && strHotkeyTemp != "" && strHotkeyTemp != null)
                     {
+                        aryHotkeyLoadPreset[p] = strHotkeyTemp;
                         WriteLog("Load Preset " + (p+1).ToString() + " Hotkey '" + aryHotkeyLoadPreset[p] + "'");
                         CF_loadHotkey(aryHotkeyLoadPreset[p], "Centrafuse.CFActions.Plugin:" + PluginName + ",LoadPreset" + (p+1).ToString());
                     }
-                    else WriteLog("aryHotkeyLoadPreset" + (p+1).ToString() + ": None");
+                    else WriteLog("aryHotkeyLoadPreset" + (p+1).ToString() + ": Unchanged or not set");
                 }
 
                 try { DABFMMonkeyUSBVID = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/VID"); }
@@ -1508,7 +1515,6 @@ namespace DABFMMonkey
 		}
 
 #endregion
-
 
 #region AdvancedListView
 

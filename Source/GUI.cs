@@ -44,16 +44,16 @@ namespace DABFMMonkey
     {
 
 #region Variables
-        //Hotkeys for steering wheel controls. Default values
-        private string strLaunchHotkey = "CONTROL+ALT+J";
-        private string strHotkeyLoadNextTrack = "CONTROL+ALT+K";
-        private string strHotkeyLoadPreviousTrack = "CONTROL+ALT+L";
-        private string strHotkeyRadioSeekForward = "CONTROL+ALT+SHIFT+1";
-        private string strHotkeyRadioSeekBack = "CONTROL+ALT+SHIFT+2";
-        private string strHotkeyFM = "CONTROL+ALT+SHIFT+F";
-        private string strHotkeyDAB = "CONTROL+ALT+SHIFT+A";
-        private string strHotkeyScan = "CONTROL+ALT+SHIFT+X";
-        private string strHotkeyToggleDABFM = "CONTROL+ALT+U";
+        //Hotkeys for steering wheel controls
+        private string strLaunchHotkey = "";
+        private string strHotkeyLoadNextTrack = "";
+        private string strHotkeyLoadPreviousTrack = "";
+        private string strHotkeyRadioSeekForward = "";
+        private string strHotkeyRadioSeekBack = "";
+        private string strHotkeyFM = "";
+        private string strHotkeyDAB = "";
+        private string strHotkeyScan = "";
+        private string strHotkeyToggleDABFM = "";
         private string[] aryHotkeyLoadPreset = new string[] { "CONTROL+F2", "CONTROL+F3", "CONTROL+F4", "CONTROL+F5", "CONTROL+F6", "CONTROL+F7", "CONTROL+F8", "CONTROL+F9" };
 
         //Default SLS Picture size to use
