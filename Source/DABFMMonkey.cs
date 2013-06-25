@@ -652,6 +652,7 @@ namespace DABFMMonkey
 
                     //CMLCommands happen wether the plugin is active or not. Make sure we only execute commands if boolEnableAudio is true for global CML commands
                     case "CENTRAFUSE.MAIN.FASTFORWARD":
+                    case "CENTRAFUSE.CFACTIONS.NEXTSONG":
                         if (boolEnableAudio)
                         {
                             if (state == CF_ButtonState.Click)
@@ -681,6 +682,7 @@ namespace DABFMMonkey
                         else return false;
 
                     case "CENTRAFUSE.MAIN.REWIND":
+                    case "CENTRAFUSE.CFACTIONS.PREVSONG":
                         if (boolEnableAudio)
                         {
                             if (state == CF_ButtonState.Click)
