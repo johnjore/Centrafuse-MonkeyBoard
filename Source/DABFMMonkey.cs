@@ -115,7 +115,7 @@ namespace DABFMMonkey
 			{
                 // Call writeModuleLog() with the string startup() to keep only last 2 runtimes...                
                 // Note CF_loadConfig() must be called before WriteLog() can be used
-                WriteLog("CF_pluginInit() - start");               
+                WriteLog("CF_pluginInit() - start");
 
                 // Check pluginConfig file is valid
                 string ConfigFileName = CFTools.AppDataPath + PluginPath + ConfigurationFile;
@@ -141,7 +141,8 @@ namespace DABFMMonkey
                 // CF3_initPlugin() Will configure pluginConfig and pluginLang automatically. All plugins must call this method once
                 this.CF3_initPlugin("DABFMMonkey", true);
 
-                WriteLog("Assembly Version: '" + Assembly.GetEntryAssembly().GetName().Version.ToString() + "'");
+                //Log current version of DLL for debug purposes
+                WriteLog("Assembly Version: '" + Assembly.GetExecutingAssembly().GetName().Version.ToString() + "'");
 
                 //Initialise the advanced list
                 try
@@ -219,8 +220,7 @@ namespace DABFMMonkey
                 ScanDAB(); // Scan and provide a status update
             }
 
-            //Create the theads
-            threadIOComms = new Thread(this.IOCommsThread);
+            //Create the Scan thead
             newthreadSCANFM = new Thread(this.newsubSCANFM);
 
             WriteLog("enableplugin() - end");
@@ -403,7 +403,12 @@ namespace DABFMMonkey
 
             WriteLog("ClearRDSVars()");
             ClearRDSVars();         // Clear the rds info bars
-           
+
+            //Stop thread for updating the GUI with RDS information
+            WriteLog("Stop the IOComms Thread");
+            boolIOCommsThread = false;
+            threadIOComms.Abort(); // Kill the thread
+
             // Allow closing of file before exit
             System.Threading.Thread.Sleep(1000);
 
@@ -962,7 +967,8 @@ namespace DABFMMonkey
                     if (boolEnableInternetUsage && boolEnableRadioVIS) RadioVIS(DABRadioChannel);
                     
                     //Start thread for updating the GUI with RDS information
-                    WriteLog("Enable the IOComms Thread");
+                    WriteLog("Create and enable the IOComms Thread");
+                    threadIOComms = new Thread(this.IOCommsThread);
                     boolIOCommsThread = true;
                     threadIOComms.Start();
 
