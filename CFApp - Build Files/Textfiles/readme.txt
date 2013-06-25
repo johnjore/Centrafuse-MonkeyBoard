@@ -40,4 +40,7 @@ Revisions:
 		Additonal queries can be added by requested
 	06: Various bug fixes and internal changes
 	    Added RadioDNS and RadioVIS support
-	08: Fixed hotkeys broke after entering "Settings" and communication corruption when pause/unpause plugin
+	08: Fixed:
+		Hotkeys broke after entering "Settings"
+	    	Communication corruption when pause/unpause plugin
+		Added integration with Garmin Mobile PC plugin
