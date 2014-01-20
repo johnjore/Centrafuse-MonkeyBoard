@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2012, 2013, John Jore
+ * Copyright 2012, 2013, 2014, John Jore
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -41,7 +41,8 @@ namespace DABFMMonkey
         STEREOMODE = 11,
         GETBBEEQ = 12,
         SETBBEEQ = 13,
-        CLOSERADIOPORT = 14
+        CLOSERADIOPORT = 14,
+        SETATTVOLUME = 15
     }
 
     public enum RADIO_TUNE_BAND : sbyte

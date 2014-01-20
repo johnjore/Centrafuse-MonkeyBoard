@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2012, 2013, John Jore
+ * Copyright 2012, 2013, 2014, John Jore
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -27,16 +27,8 @@ using centrafuse.Plugins;
 using System.Threading;
 using System.Xml.Serialization;
 using System.Collections.Generic;
-
+using CFControlsExtender.Listview;  //Advanced ListView
 using CFControlsExtender.Base;      //Advanced ListView
-
-/*using System.Xml;
-using Microsoft.Win32;
-using System.Collections;
-using System.Diagnostics;
-using System.Drawing;
-using CFControlsExtender.Imaging;
-using CFControlsExtender.ItemsBuilder;*/
 
 namespace DABFMMonkey
 {
@@ -72,7 +64,6 @@ namespace DABFMMonkey
         private bool boolButtonMode = false;    // Top, right buttons in legacy or new mode. New Mode = Scan for next/prev channel/freq. Legacy = next/prev fav
         private bool boolDABMinimal = false;    // Minimal GUI
 
-
         // Advanced List View
         delegate void SetListVisableCallback(bool vis);
 
@@ -93,17 +84,25 @@ namespace DABFMMonkey
         //Update screen with RDS information
         private void IOCommsThread()
         {
-            WriteLog("Start of 'IOCommsThread()' thread");
-            do
+            try
             {
-                //Process commands and get data from board, if init
-                if (init)
+                WriteLog("Start of 'IOCommsThread()' thread");
+                do
                 {
-                    IOCommsSub();
+                    //Process commands and get data from board, if init
+                    if (init)
+                    {
+                        IOCommsSub();
+                    }
+                    else Thread.Sleep(2000); //Sleep if not initialized                
                 }
-                else Thread.Sleep(2000); //Sleep if not initialized                
+                while (boolIOCommsThread);
             }
-            while (boolIOCommsThread);
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to loop IOCommsThread(), " + errmsg.ToString());
+            }
+
             WriteLog("End of 'IOCommsThread()' thread");
         }
 
@@ -117,8 +116,15 @@ namespace DABFMMonkey
             _stationName = "";
 
             //Assume changing channels so hide SLS
-            HideSLS();
-
+            try
+            {
+                HideSLS();
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to HideSLS(), " + errmsg.ToString());
+            }
+            
             WriteLog("ClearRDSVars() - End");
         }
 
@@ -127,16 +133,23 @@ namespace DABFMMonkey
         {
             WriteLog("ShowSLS() - Start");
 
-            //If not in normal mode, don't show the image, else it will overlay deleting and blacklisting
-            if (listMain.TemplateID != sbListRows.ToString() + "_default")
+            try
             {
-                WriteLog("Not showing SLS image as list view is not in default mode.");
-                return;
+                //If not in normal mode, don't show the image, else it will overlay deleting and blacklisting
+                if (listMain.TemplateID != sbListRows.ToString() + "_default")
+                {
+                    WriteLog("Not showing SLS image as list view is not in default mode.");
+                    return;
+                }
+
+                //Hide favlist. use thread safe function to set visible state for list
+                SetListVisable(false);
             }
-
-            //Hide favlist. use thread safe function to set visible state for list
-            SetListVisable(false);
-
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to hide favlist, " + errmsg.ToString());
+            }
+            
             //Show picture
             try
             {                
@@ -147,17 +160,20 @@ namespace DABFMMonkey
                 CF_setPictureImage(SLSID, CFTools.ImageFromFile(strImageFilename));
                 CF_setPictureBoxEnableFlag(SLSID, true);
             }
-            catch { }
-                        
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to show picture, " + errmsg.ToString());
+            }
+                                    
             //Remove picture file to keep filesystem tidy
             try
             {
                 System.IO.File.Delete(strImageFilename);
                 WriteLog("Removed File '" + strImageFilename + "'");
             }
-            catch (System.IO.IOException e)
+            catch (Exception errmsg)
             {
-                WriteLog("Failed to remove '" + strImageFilename + "' Error:" + e.Message);
+                WriteLog("Failed to remove '" + strImageFilename + "' Error:" + errmsg.Message);
             }
 
             WriteLog("ShowSLS() - End");
@@ -168,13 +184,20 @@ namespace DABFMMonkey
         {
             WriteLog("HidewSLS() - Start");
 
-            //Hide PictureBox
-            CF_clearPictureImage(SLSID);
-            CF_setPictureBoxEnableFlag(SLSID, false);
+            try
+            {
+                //Hide PictureBox
+                CF_clearPictureImage(SLSID);
+                CF_setPictureBoxEnableFlag(SLSID, false);
 
-            // use thread safe function to set visible state for list
-            SetListVisable(true);
-
+                // use thread safe function to set visible state for list
+                SetListVisable(true);
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to HideSLS(), " + errmsg.ToString());
+            }
+            
             WriteLog("HidewSLS() - End");
         }
 
@@ -183,37 +206,44 @@ namespace DABFMMonkey
         {
             WriteLog("DABFMClick() - Start");
 
-            switch (intDABFMMode)
+            try
             {
-                case RADIO_TUNE_BAND.FM_BAND:
-                    WriteLog("Selecting DAB");
+                switch (intDABFMMode)
+                {
+                    case RADIO_TUNE_BAND.FM_BAND:
+                        WriteLog("Selecting DAB");
 
-                    //If there are programs in the board, we can switch to DAB
-                    if (intTotalProgram > 0)
-                    {
-                        if (SetTuneBand(RADIO_TUNE_BAND.DAB_BAND)) WriteLog("Success Selecting DAB"); else WriteLog("Failed Selecting DAB");
-                    }
-                    else
-                    {
-                        WriteLog("No DAB Programs, will start a Scan");
-                        if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SCANDAB;
-                    }
-                    break;
-                case RADIO_TUNE_BAND.DAB_BAND:
-                    WriteLog("Selecting FM");
-                    //Swapping to FM, hide SLS
-                    HideSLS();
-                    if (SetTuneBand(RADIO_TUNE_BAND.FM_BAND)) WriteLog("Success Selecting FM"); else WriteLog("Failed Selecting FM");
-                    break;
-                case RADIO_TUNE_BAND.UNDEFINED:
-                    WriteLog("Selecting FM, but only because we're undefined. Should never happen...");
-                    if (SetTuneBand(RADIO_TUNE_BAND.FM_BAND)) WriteLog("Success Selecting FM"); else WriteLog("Failed Selecting FM");
-                    //Swapping to FM, hide SLS
-                    HideSLS();
-                    break;
-                default:
-                    WriteLog("Unknown Mode: '" + intDABFMMode.ToString() + "'");
-                    break;
+                        //If there are programs in the board, we can switch to DAB
+                        if (intTotalProgram > 0)
+                        {
+                            if (SetTuneBand(RADIO_TUNE_BAND.DAB_BAND)) WriteLog("Success Selecting DAB"); else WriteLog("Failed Selecting DAB");
+                        }
+                        else
+                        {
+                            WriteLog("No DAB Programs, will start a Scan");
+                            if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SCANDAB;
+                        }
+                        break;
+                    case RADIO_TUNE_BAND.DAB_BAND:
+                        WriteLog("Selecting FM");
+                        //Swapping to FM, hide SLS
+                        HideSLS();
+                        if (SetTuneBand(RADIO_TUNE_BAND.FM_BAND)) WriteLog("Success Selecting FM"); else WriteLog("Failed Selecting FM");
+                        break;
+                    case RADIO_TUNE_BAND.UNDEFINED:
+                        WriteLog("Selecting FM, but only because we're undefined. Should never happen...");
+                        if (SetTuneBand(RADIO_TUNE_BAND.FM_BAND)) WriteLog("Success Selecting FM"); else WriteLog("Failed Selecting FM");
+                        //Swapping to FM, hide SLS
+                        HideSLS();
+                        break;
+                    default:
+                        WriteLog("Unknown Mode: '" + intDABFMMode.ToString() + "'");
+                        break;
+                }
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to switch between FM and DAB mode, " + errmsg.ToString());
             }
 
             WriteLog("DABFMClick() - End");
@@ -224,9 +254,16 @@ namespace DABFMMonkey
         {
             WriteLog("PayPalClick() - Start");
 
-            CF_systemCommand(CF_Actions.PLUGIN, "WEB", "BROWSE", "http://www.paypal.com", "FULLSCREEN");
-            CF_systemCommand(CF_Actions.PLUGIN, "WEB");
-            this.CF_displayMessage("If you find the plugin useful, feel free to make a donation to john@jore.no");
+            try
+            {
+                CF_systemCommand(CF_Actions.PLUGIN, "WEB", "BROWSE", "http://www.paypal.com", "FULLSCREEN");
+                CF_systemCommand(CF_Actions.PLUGIN, "WEB");
+                this.CF_displayMessage("If you find the plugin useful, feel free to make a donation to john@jore.no");
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to show PayPal message, " + errmsg.ToString());
+            }
 
             WriteLog("PayPalClick() - End");
         }
@@ -236,9 +273,16 @@ namespace DABFMMonkey
         {
             WriteLog("SLSClick() - Start");
 
-            //Hide the SLS Picture
-            HideSLS();
-
+            try
+            {
+                //Hide the SLS Picture
+                HideSLS();
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to HideSLS(), " + errmsg.ToString());
+            }
+            
             WriteLog("SLSClick() - End");
         }
 
@@ -279,7 +323,7 @@ namespace DABFMMonkey
             }
             catch (Exception errmsg)
             {
-                CFTools.writeError(errmsg.ToString());
+                WriteLog("Failed to , " + errmsg.ToString());
             }
 
             WriteLog("ScanClick() - End");
@@ -289,34 +333,41 @@ namespace DABFMMonkey
         private void SetStereoModeClick()
         {
             WriteLog("SetStereoModeClick() - Start");
-            
-            if (STEREOMODE != Mode.UNDEFINED)
-            {
-                switch (STEREOMODE)
-                {
-                    case Mode.AUTO:
-                        STEREOMODE = Mode.MONO;
-                        break;
-                    case Mode.MONO:
-                        STEREOMODE = Mode.AUTO;
-                        break;
-                }
 
-                if (SetStereoMode(STEREOMODE))
-                {
-                    Mode TempMode = GetStereoMode();
-                    if (TempMode == STEREOMODE) 
-                    {
-                        WriteLog("Stero mode validated: '" + STEREOMODE.ToString() + "'");
-                        this.CF_systemCommand(CF_Actions.SHOWINFO, base.pluginLang.ReadField("/APPLANG/SETUP/STEREOMODE" + STEREOMODE.ToString()), "AUTOHIDE");
-                    }
-                    else WriteLog("Stero mode wrong");                    
-                }
-                else WriteLog("Failed to set Stero mode");
-            }
-            else
+            try
             {
-                WriteLog("STEREOMODE undefined");
+                if (STEREOMODE != Mode.UNDEFINED)
+                {
+                    switch (STEREOMODE)
+                    {
+                        case Mode.AUTO:
+                            STEREOMODE = Mode.MONO;
+                            break;
+                        case Mode.MONO:
+                            STEREOMODE = Mode.AUTO;
+                            break;
+                    }
+
+                    if (SetStereoMode(STEREOMODE))
+                    {
+                        Mode TempMode = GetStereoMode();
+                        if (TempMode == STEREOMODE)
+                        {
+                            WriteLog("Stero mode validated: '" + STEREOMODE.ToString() + "'");
+                            this.CF_systemCommand(CF_Actions.SHOWINFO, base.pluginLang.ReadField("/APPLANG/SETUP/STEREOMODE" + STEREOMODE.ToString()), "AUTOHIDE");
+                        }
+                        else WriteLog("Stero mode wrong");
+                    }
+                    else WriteLog("Failed to set Stero mode");
+                }
+                else
+                {
+                    WriteLog("STEREOMODE undefined");
+                }
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to Handle Forced Mono / Auto Mode switch, " + errmsg.ToString());
             }
 
             WriteLog("SetStereoModeClick() - End");
@@ -353,8 +404,10 @@ namespace DABFMMonkey
                             this.WriteLog("TUNE_Click: resulttext= " + resulttext + " iFreq Hz= " + iFreq.ToString());
                             TuneFreq(iFreq);
                         }
-                        catch { }
-
+                        catch (Exception errmsg)
+                        {
+                            WriteLog("Failed to handle TuneClick() - FM_BAND, " + errmsg.ToString());
+                        }
                         break;
                     case RADIO_TUNE_BAND.DAB_BAND:
                         if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.TUNESELECT;
@@ -366,7 +419,7 @@ namespace DABFMMonkey
             }
             catch (Exception errmsg)
             {
-                CFTools.writeError(errmsg.ToString());
+                WriteLog("Failed to handle TuneClick(), " + errmsg.ToString());
             }
 
             WriteLog("TuneClick() - End"); //Text is "Select" when in DAB mode
@@ -464,10 +517,16 @@ namespace DABFMMonkey
                         TuneFreq(intNewStation);
                         WriteLog("Current Radio command value: " + RadioCommand.ToString());
                     }
-                    catch { }
+                    catch (Exception errmsg)
+                    {
+                        WriteLog("Failed to Tune to new station, " + errmsg.ToString());
+                    }
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle TuneSelect(), " + errmsg.ToString());
+            }
 
             WriteLog("TuneSelect() - End");
         }
@@ -491,7 +550,7 @@ namespace DABFMMonkey
             }
             catch (Exception errmsg)
             {
-                CFTools.writeError(errmsg.ToString());
+                WriteLog("Failed to FwdTuneClick(), " + errmsg.ToString());
             }
 
             WriteLog("FwdTuneClick() - End");
@@ -507,7 +566,7 @@ namespace DABFMMonkey
             }
             catch (Exception errmsg)
             {
-                CFTools.writeError(errmsg.ToString());
+                WriteLog("Failed to handle FwdFineTuneClick(), " + errmsg.ToString());
             }
 
             WriteLog("FwdFineTuneClick() - End");
@@ -532,7 +591,7 @@ namespace DABFMMonkey
             }
             catch (Exception errmsg)
             {
-                CFTools.writeError(errmsg.ToString());
+                WriteLog("Failed to handle BackTuneSelect(), " + errmsg.ToString());
             }
 
             WriteLog("BackTuneClick() - End");
@@ -547,7 +606,7 @@ namespace DABFMMonkey
             }
             catch (Exception errmsg)
             {
-                CFTools.writeError(errmsg.ToString());
+                WriteLog("Failed to handle BackFineTuneClick(), " + errmsg.ToString());
             }
 
             this.WriteLog("BackFineTuneClick() - End");
@@ -558,7 +617,14 @@ namespace DABFMMonkey
         {
             this.WriteLog("AddfavBtnClick() - Start");
 
-            if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.ADDFAVBTNCLICK;
+            try
+            {
+                if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.ADDFAVBTNCLICK;
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle AddfavBtnClick, " + errmsg.ToString());
+            }
 
             this.WriteLog("AddfavBtnClick() - End");
         }
@@ -587,7 +653,10 @@ namespace DABFMMonkey
                     }
                     else WriteLog("GetProgramName - Not ready");
                 }
-                catch { WriteLog("Exception Thrown Getting Data"); }
+                catch (Exception errmsg)
+                {
+                    WriteLog("Exception Thrown calling GetProgamName() in FM mode, " + errmsg.ToString());
+                }
 
                 //Get Program Name (Long) if in DAB mode as we'll use it instead of board's Channel index
                 string strDABLongName = "";
@@ -607,7 +676,10 @@ namespace DABFMMonkey
                         }
                         else WriteLog("GetProgramName - Not ready");
                     }
-                    catch { WriteLog("Exception Thrown Getting Data"); }
+                    catch (Exception errmsg)
+                    {
+                        WriteLog("Exception Thrown calling GetProgramName() in DAB mode," + errmsg.ToString());
+                    }
                 }
 
                 //If no program name, use current freq
@@ -624,7 +696,10 @@ namespace DABFMMonkey
                     {
                         if ((intCurrentStation != 999) && WaitForBoard()) intServCompType = (ServCompType)GetServCompType(intCurrentStation);
                     }
-                    catch { WriteLog("Exception Thrown Getting Service Type"); }
+                    catch (Exception errmsg)
+                    {
+                        WriteLog("Exception Thrown Getting Service Type, " + errmsg.ToString());
+                    }
 
                     // We should only be in DAB or DAB+ mode as we dont know how to process the other modes...
                     switch (intServCompType)
@@ -672,9 +747,9 @@ namespace DABFMMonkey
                     }
                 }
             }
-            catch
+            catch (Exception errmsg)
             {
-                WriteLog("Failed to add to favorites");
+                WriteLog("Failed to add to favorites, " + errmsg.ToString());
             }
 
             this.WriteLog("AddFavorites() - End");
@@ -726,11 +801,10 @@ namespace DABFMMonkey
                     //Refresh the row that changed
                     listMain.Invalidate();
                 }
-
             }
-            catch (Exception exception)
+            catch (Exception errmsg)
             {
-                CFTools.writeError(exception.Message, exception.StackTrace);
+                WriteLog("Failed to handle BlacklistClick(), " + errmsg.ToString());
             }
             WriteLog("BlacklistClick - end");
         }
@@ -757,9 +831,9 @@ namespace DABFMMonkey
 
                 }
             }
-            catch
+            catch (Exception errmsg)
             {
-                WriteLog("Failed to remove a favorite");
+                WriteLog("Failed to handle DeleteClick(), " + errmsg.ToString());
             }
 
             WriteLog("DeleteClick() - end");
@@ -770,8 +844,16 @@ namespace DABFMMonkey
         {
             WriteLog("PageUpClick() - start");
 
-            HideSLS(); //Make sure no SLS image is visible, else scrolling is hidden
-            OnPageUpClick();
+            try
+            {
+                HideSLS(); //Make sure no SLS image is visible, else scrolling is hidden
+                OnPageUpClick();
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle PageUpClick(), " + errmsg.ToString());
+            }
+
             WriteLog("PageUpClick() - end");
         }
 
@@ -786,8 +868,16 @@ namespace DABFMMonkey
         {
             WriteLog("PageDownClick() - start");
 
-            HideSLS(); //Make sure no SLS image is visible, else scrolling is hidden
-            OnPageDownClick();
+            try
+            {
+                HideSLS(); //Make sure no SLS image is visible, else scrolling is hidden
+                OnPageDownClick();
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle PageDownClick(), " + errmsg.ToString());
+            }
+
             WriteLog("PageDownClick() - end");
         }
 
@@ -805,22 +895,31 @@ namespace DABFMMonkey
             //File name for Favorites
             string FavFileName = CFTools.AppDataPath + PluginPath + FavoritesFile;
 
+            //List of Favorites
             List<Station> lfs = new List<Station>();
-            if (File.Exists(FavFileName))
+
+            try
             {
-                try
+                if (File.Exists(FavFileName))
                 {
-                    WriteLog("LoadFavourites() Favorites - deserialize");
-                    XmlSerializer SerializerObj = new XmlSerializer(typeof(List<Station>));
-                    Stream ReadFileStream = new FileStream(FavFileName, FileMode.Open);
-                    lfs = (List<Station>)SerializerObj.Deserialize(ReadFileStream);
-                    ReadFileStream.Close();
+                    try
+                    {
+                        WriteLog("LoadFavourites() Favorites - deserialize");
+                        XmlSerializer SerializerObj = new XmlSerializer(typeof(List<Station>));
+                        Stream ReadFileStream = new FileStream(FavFileName, FileMode.Open);
+                        lfs = (List<Station>)SerializerObj.Deserialize(ReadFileStream);
+                        ReadFileStream.Close();
+                    }
+                    catch (Exception exception1)
+                    {
+                        Exception ex = exception1;
+                        WriteLog("LoadFavourites() EXCEPTION: " + ex.ToString());
+                    }
                 }
-                catch (Exception exception1)
-                {
-                    Exception ex = exception1;
-                    WriteLog("LoadFavourites() EXCEPTION: " + ex.ToString());
-                }
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle LoadFavorites(), " + errmsg.ToString());
             }
 
             this.WriteLog("LoadFavourites() - end");
@@ -835,22 +934,31 @@ namespace DABFMMonkey
             //File name for Blacklisted
             string BlacklistFileName = CFTools.AppDataPath + PluginPath + BlackListedFile;
 
+            //List of blacklisted
             List<BlackList> lfs = new List<BlackList>();
-            if (File.Exists(BlacklistFileName))
+
+            try
             {
-                try
+                if (File.Exists(BlacklistFileName))
                 {
-                    WriteLog("LoadBlacklisted()  - deserialize");
-                    XmlSerializer SerializerObj = new XmlSerializer(typeof(List<BlackList>));
-                    Stream ReadFileStream = new FileStream(BlacklistFileName, FileMode.Open);
-                    lfs = (List<BlackList>)SerializerObj.Deserialize(ReadFileStream);
-                    ReadFileStream.Close();
+                    try
+                    {
+                        WriteLog("LoadBlacklisted()  - deserialize");
+                        XmlSerializer SerializerObj = new XmlSerializer(typeof(List<BlackList>));
+                        Stream ReadFileStream = new FileStream(BlacklistFileName, FileMode.Open);
+                        lfs = (List<BlackList>)SerializerObj.Deserialize(ReadFileStream);
+                        ReadFileStream.Close();
+                    }
+                    catch (Exception exception1)
+                    {
+                        Exception ex = exception1;
+                        WriteLog("LoadBlacklisted() EXCEPTION: " + ex.ToString());
+                    }
                 }
-                catch (Exception exception1)
-                {
-                    Exception ex = exception1;
-                    WriteLog("LoadBlacklisted() EXCEPTION: " + ex.ToString());
-                }
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle LoadBlacklisted(), " + errmsg.ToString());
             }
 
             this.WriteLog("LoadBlacklisted() - end");
@@ -870,9 +978,9 @@ namespace DABFMMonkey
                 SerializerObj.Serialize(WriteFileStream, fs);
                 WriteFileStream.Close();
             }
-            catch (Exception ex)
+            catch (Exception errmsg)
             {
-                this.WriteLog("SaveFavourites() EXCEPTION: " + ex.ToString());
+                WriteLog("Failed to handle SaveFavorites(), " + errmsg.ToString());
             }
 
             this.WriteLog("SaveFavourites() - end");
@@ -891,9 +999,9 @@ namespace DABFMMonkey
                 SerializerObj.Serialize(WriteFileStream, fs);
                 WriteFileStream.Close();
             }
-            catch (Exception ex)
+            catch (Exception errmsg)
             {
-                this.WriteLog("SaveBlacklist() EXCEPTION: " + ex.ToString());
+                WriteLog("Failed to handle SaveBlacklist(), " + errmsg.ToString());
             }
 
             this.WriteLog("SaveBlacklist() - end");
@@ -907,22 +1015,31 @@ namespace DABFMMonkey
             //File name for Blacklisted
             string BBEEQConfigurationFileName = CFTools.AppDataPath + PluginPath + BBEEQFile;
 
+            //
             BBEEQ _BBEEQSettings = new BBEEQ();
-            if (File.Exists(BBEEQConfigurationFileName))
+
+            try
             {
-                try
+                if (File.Exists(BBEEQConfigurationFileName))
                 {
-                    WriteLog("LoadBBEEQ()  - deserialize");
-                    XmlSerializer SerializerObj = new XmlSerializer(typeof(BBEEQ));
-                    Stream ReadFileStream = new FileStream(BBEEQConfigurationFileName, FileMode.Open);
-                    _BBEEQSettings = (BBEEQ)SerializerObj.Deserialize(ReadFileStream);
-                    ReadFileStream.Close();
+                    try
+                    {
+                        WriteLog("LoadBBEEQ()  - deserialize");
+                        XmlSerializer SerializerObj = new XmlSerializer(typeof(BBEEQ));
+                        Stream ReadFileStream = new FileStream(BBEEQConfigurationFileName, FileMode.Open);
+                        _BBEEQSettings = (BBEEQ)SerializerObj.Deserialize(ReadFileStream);
+                        ReadFileStream.Close();
+                    }
+                    catch (Exception exception1)
+                    {
+                        Exception ex = exception1;
+                        WriteLog("LoadBBEEQ() EXCEPTION: " + ex.ToString());
+                    }
                 }
-                catch (Exception exception1)
-                {
-                    Exception ex = exception1;
-                    WriteLog("LoadBBEEQ() EXCEPTION: " + ex.ToString());
-                }
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle LoadBBEEQ(), " + errmsg.ToString());
             }
 
             this.WriteLog("LoadBBEEQ() - end");
@@ -942,9 +1059,9 @@ namespace DABFMMonkey
                 SerializerObj.Serialize(WriteFileStream, fs);
                 WriteFileStream.Close();
             }
-            catch (Exception ex)
+            catch (Exception errmsg)
             {
-                this.WriteLog("SaveBBEEQ() EXCEPTION: " + ex.ToString());
+                WriteLog("Failed to handle SaveBBEEQ(), " + errmsg.ToString());
             }
 
             this.WriteLog("SaveBBEEQ() - end");
@@ -957,21 +1074,28 @@ namespace DABFMMonkey
 
             intVolumeTimerButton = 0; // Set to 0 each time the timer is initialized            
 
-            while (true) //Keep looping until killed by the change of ButtonState
+            try
             {
-                //WriteLog("CF_pluginCMLCommand Timer Duration: '" + intTimerUpDown.ToString() + "'");
-                intVolumeTimerButton = intVolumeTimerButton + intvolumeSleepTimer;
-
-                if (intVolumeTimerButton > 1000) //Button held, change volume
+                while (true) //Keep looping until killed by the change of ButtonState
                 {
-                    WriteLog("CF_pluginCMLCommand CHANGE VOLUME");
-                    DABVolume(DABVolumeDirection); //Change the volume in the direction set by the variable
-                }
+                    //WriteLog("CF_pluginCMLCommand Timer Duration: '" + intTimerUpDown.ToString() + "'");
+                    intVolumeTimerButton = intVolumeTimerButton + intvolumeSleepTimer;
 
-                Thread.Sleep(intvolumeSleepTimer); // Sleep, else we'll ajust volume to max or min too fast
+                    if (intVolumeTimerButton > 1000) //Button held, change volume
+                    {
+                        WriteLog("CF_pluginCMLCommand CHANGE VOLUME");
+                        DABVolume(DABVolumeDirection); //Change the volume in the direction set by the variable
+                    }
+
+                    Thread.Sleep(intvolumeSleepTimer); // Sleep, else we'll ajust volume to max or min too fast
+                }
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle TimerVolUpdDown(), " + errmsg.ToString());
             }
 
-            //WriteLog("TimerUpdDown() - end");
+            WriteDebug("TimerUpdDown() - end");
         }
 
 #endregion
@@ -985,69 +1109,76 @@ namespace DABFMMonkey
 
             this.CF3_initSection("Mixer");
 
-            //Button text
-            base.CF_updateButtonText("Off", this.pluginLang.ReadField("/APPLANG/SETUP/OFF"));
-            base.CF_updateButtonText("BBE", this.pluginLang.ReadField("/APPLANG/SETUP/BBE"));
-            base.CF_updateButtonText("EQ", this.pluginLang.ReadField("/APPLANG/SETUP/EQ"));
-            base.CF_updateButtonText("Exit", this.pluginLang.ReadField("/APPLANG/SETUP/EXIT"));
-            
-            //Get current BBEEQ status from board and setup the buttons
-            if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.GETBBEEQ;
-
-            //Wait until we have the BBEEQ Values
-            WriteLog("Waiting...");
-            do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
-
-            WriteLog("Success: " + _BBEEQ.BBEOn.ToString() + " " + _BBEEQ.EQMode.ToString() + " " + _BBEEQ.BBELo.ToString() + " " + _BBEEQ.BBEHi.ToString() + " " + _BBEEQ.BBECFreq.ToString() + " " + _BBEEQ.BBEMachFreq.ToString() + " " + _BBEEQ.BBEMachGain.ToString() + " " + _BBEEQ.BBEMachQ.ToString() + " " + _BBEEQ.BBESurr.ToString() + " " + _BBEEQ.BBEMp.ToString() + " " + _BBEEQ.BBEHpF.ToString() + " " + _BBEEQ.BBEHiMode.ToString());
-
-            //Set button status
-            switch (_BBEEQ.BBEOn)
+            try
             {
-                case BBEStatus.Off:
-                    WriteLog("On,Off,Off");
-                    CF_setButtonOn("Off");
-                    CF_setButtonOff("BBE");
-                    CF_setButtonOff("EQ");
-                    
-                    //No BBE items
-                    BBEObjects(false); // Do not show BBE GUI items
-                    timerSlider.Enabled = false; // Do not update from sliders
+                //Button text
+                base.CF_updateButtonText("Off", this.pluginLang.ReadField("/APPLANG/SETUP/OFF"));
+                base.CF_updateButtonText("BBE", this.pluginLang.ReadField("/APPLANG/SETUP/BBE"));
+                base.CF_updateButtonText("EQ", this.pluginLang.ReadField("/APPLANG/SETUP/EQ"));
+                base.CF_updateButtonText("Exit", this.pluginLang.ReadField("/APPLANG/SETUP/EXIT"));
 
-                    //No EQ items
-                    boolEQFirstPress = false;
+                //Get current BBEEQ status from board and setup the buttons
+                if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.GETBBEEQ;
 
-                    break;
-                case BBEStatus.BBE:
-                    WriteLog("Off,On,Off");
+                //Wait until we have the BBEEQ Values
+                WriteLog("Waiting...");
+                do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
 
-                    //Set button status
-                    CF_setButtonOff("Off");
-                    CF_setButtonOn("BBE");
-                    CF_setButtonOff("EQ"); 
+                WriteLog("Success: " + _BBEEQ.BBEOn.ToString() + " " + _BBEEQ.EQMode.ToString() + " " + _BBEEQ.BBELo.ToString() + " " + _BBEEQ.BBEHi.ToString() + " " + _BBEEQ.BBECFreq.ToString() + " " + _BBEEQ.BBEMachFreq.ToString() + " " + _BBEEQ.BBEMachGain.ToString() + " " + _BBEEQ.BBEMachQ.ToString() + " " + _BBEEQ.BBESurr.ToString() + " " + _BBEEQ.BBEMp.ToString() + " " + _BBEEQ.BBEHpF.ToString() + " " + _BBEEQ.BBEHiMode.ToString());
 
-                    //Enable BBE items
-                    BBEObjects(true); // Show BBE GUI items
-                    timerSlider.Enabled = true; // Update from slider values
+                //Set button status
+                switch (_BBEEQ.BBEOn)
+                {
+                    case BBEStatus.Off:
+                        WriteLog("On,Off,Off");
+                        CF_setButtonOn("Off");
+                        CF_setButtonOff("BBE");
+                        CF_setButtonOff("EQ");
 
-                    //No EQ items
-                    boolEQFirstPress = false;
+                        //No BBE items
+                        BBEObjects(false); // Do not show BBE GUI items
+                        timerSlider.Enabled = false; // Do not update from sliders
 
-                    break;
-                case BBEStatus.EQ:
-                    WriteLog("Off,Off,On");
-                    CF_setButtonOff("Off");
-                    CF_setButtonOff("BBE");
-                    CF_setButtonOn("EQ");
-                    
-                    //No BBE items
-                    BBEObjects(false); // Do not show BBE GUI items
-                    timerSlider.Enabled = false; // Do not update from sliders
+                        //No EQ items
+                        boolEQFirstPress = false;
 
-                    //Set button text to current value                   
-                    string[] aryEQList = this.pluginLang.ReadField("/APPLANG/SETUP/EQMODES").Split(',');
-                    base.CF_updateButtonText("MixerEQ", aryEQList[_BBEEQ.EQMode]);
+                        break;
+                    case BBEStatus.BBE:
+                        WriteLog("Off,On,Off");
 
-                    break;
+                        //Set button status
+                        CF_setButtonOff("Off");
+                        CF_setButtonOn("BBE");
+                        CF_setButtonOff("EQ");
+
+                        //Enable BBE items
+                        BBEObjects(true); // Show BBE GUI items
+                        timerSlider.Enabled = true; // Update from slider values
+
+                        //No EQ items
+                        boolEQFirstPress = false;
+
+                        break;
+                    case BBEStatus.EQ:
+                        WriteLog("Off,Off,On");
+                        CF_setButtonOff("Off");
+                        CF_setButtonOff("BBE");
+                        CF_setButtonOn("EQ");
+
+                        //No BBE items
+                        BBEObjects(false); // Do not show BBE GUI items
+                        timerSlider.Enabled = false; // Do not update from sliders
+
+                        //Set button text to current value                   
+                        string[] aryEQList = this.pluginLang.ReadField("/APPLANG/SETUP/EQMODES").Split(',');
+                        base.CF_updateButtonText("MixerEQ", aryEQList[_BBEEQ.EQMode]);
+
+                        break;
+                }
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle BBEClick(), " + errmsg.ToString());
             }
 
             WriteLog("BBEClick() - End");
@@ -1055,76 +1186,83 @@ namespace DABFMMonkey
 
         void OnTimerSlider_Tick(object sender, EventArgs e)
         {
-            //WriteLog("Timer Updates() - start");
+            WriteDebug("Timer Updates() - start");
 
-            //WriteLog("BBELo");
-            _BBEEQ.BBELo = (sbyte)buttonArray[CF_getButtonID("Slider_BBELo")].sliderValue;
-            if (_BBEEQ.BBELo <= 0) _BBEEQ.BBELo = 0;
-            if (_BBEEQ.BBELo >= 24) _BBEEQ.BBELo = 24;
-            base.CF_updateText("Value_BBELo", Math.Round((decimal)_BBEEQ.BBELo / 2, 1).ToString() + "dB");
+            try
+            {
+                //WriteLog("BBELo");
+                _BBEEQ.BBELo = (sbyte)buttonArray[CF_getButtonID("Slider_BBELo")].sliderValue;
+                if (_BBEEQ.BBELo <= 0) _BBEEQ.BBELo = 0;
+                if (_BBEEQ.BBELo >= 24) _BBEEQ.BBELo = 24;
+                base.CF_updateText("Value_BBELo", Math.Round((decimal)_BBEEQ.BBELo / 2, 1).ToString() + "dB");
 
-            //WriteLog("BBEHi");
-            _BBEEQ.BBEHi = (sbyte)buttonArray[CF_getButtonID("Slider_BBEHi")].sliderValue;
-            if (_BBEEQ.BBEHi <= 0) _BBEEQ.BBEHi = 0;
-            if (_BBEEQ.BBEHi >= 24) _BBEEQ.BBEHi = 24;
-            base.CF_updateText("Value_BBEHi", Math.Round((decimal)_BBEEQ.BBEHi / 2, 1).ToString() + "dB");
+                //WriteLog("BBEHi");
+                _BBEEQ.BBEHi = (sbyte)buttonArray[CF_getButtonID("Slider_BBEHi")].sliderValue;
+                if (_BBEEQ.BBEHi <= 0) _BBEEQ.BBEHi = 0;
+                if (_BBEEQ.BBEHi >= 24) _BBEEQ.BBEHi = 24;
+                base.CF_updateText("Value_BBEHi", Math.Round((decimal)_BBEEQ.BBEHi / 2, 1).ToString() + "dB");
 
-            //WriteLog("BBECFreq");
-            _BBEEQ.BBECFreq = (sbyte)buttonArray[CF_getButtonID("Slider_BBECFreq")].sliderValue;
-            if (_BBEEQ.BBECFreq < 1) _BBEEQ.BBECFreq = 0; else _BBEEQ.BBECFreq = 1;
-            if (_BBEEQ.BBECFreq == 1) base.CF_updateText("Value_BBECFreq", "1KHz"); else base.CF_updateText("Value_BBECFreq", "595Hz");
+                //WriteLog("BBECFreq");
+                _BBEEQ.BBECFreq = (sbyte)buttonArray[CF_getButtonID("Slider_BBECFreq")].sliderValue;
+                if (_BBEEQ.BBECFreq < 1) _BBEEQ.BBECFreq = 0; else _BBEEQ.BBECFreq = 1;
+                if (_BBEEQ.BBECFreq == 1) base.CF_updateText("Value_BBECFreq", "1KHz"); else base.CF_updateText("Value_BBECFreq", "595Hz");
 
-            //WriteLog("BBEMachFreq");
-            _BBEEQ.BBEMachFreq = (byte)((buttonArray[CF_getButtonID("Slider_BBEMachFreq")].sliderValue * 30) + 60); //60, 90, 120, 150
-            if (_BBEEQ.BBEMachFreq <= 60) _BBEEQ.BBEMachFreq = 60;
-            if (_BBEEQ.BBEMachFreq >= 150) _BBEEQ.BBEMachFreq = 150;
-            base.CF_updateText("Value_BBEMachFreq", _BBEEQ.BBEMachFreq + "Hz");
+                //WriteLog("BBEMachFreq");
+                _BBEEQ.BBEMachFreq = (byte)((buttonArray[CF_getButtonID("Slider_BBEMachFreq")].sliderValue * 30) + 60); //60, 90, 120, 150
+                if (_BBEEQ.BBEMachFreq <= 60) _BBEEQ.BBEMachFreq = 60;
+                if (_BBEEQ.BBEMachFreq >= 150) _BBEEQ.BBEMachFreq = 150;
+                base.CF_updateText("Value_BBEMachFreq", _BBEEQ.BBEMachFreq + "Hz");
 
-            //WriteLog("BBEMachGain");
-            _BBEEQ.BBEMachGain = (sbyte)(buttonArray[CF_getButtonID("Slider_BBEMachGain")].sliderValue * 4); //0, 4, 8, 12
-            if (_BBEEQ.BBEMachGain <= 0) _BBEEQ.BBEMachGain = 0;
-            if (_BBEEQ.BBEMachGain >= 12) _BBEEQ.BBEMachGain = 12;
-            base.CF_updateText("Value_BBEMachGain", _BBEEQ.BBEMachGain.ToString() + "dB");
+                //WriteLog("BBEMachGain");
+                _BBEEQ.BBEMachGain = (sbyte)(buttonArray[CF_getButtonID("Slider_BBEMachGain")].sliderValue * 4); //0, 4, 8, 12
+                if (_BBEEQ.BBEMachGain <= 0) _BBEEQ.BBEMachGain = 0;
+                if (_BBEEQ.BBEMachGain >= 12) _BBEEQ.BBEMachGain = 12;
+                base.CF_updateText("Value_BBEMachGain", _BBEEQ.BBEMachGain.ToString() + "dB");
 
-            //WriteLog("BBEMachQ");
-            _BBEEQ.BBEMachQ = (sbyte)(buttonArray[CF_getButtonID("Slider_BBEMachQ")].sliderValue); // 1 or 3
-            if (_BBEEQ.BBEMachQ < 1) _BBEEQ.BBEMachQ = 1; else _BBEEQ.BBEMachQ = 3;
-            base.CF_updateText("Value_BBEMachQ", _BBEEQ.BBEMachQ.ToString());
+                //WriteLog("BBEMachQ");
+                _BBEEQ.BBEMachQ = (sbyte)(buttonArray[CF_getButtonID("Slider_BBEMachQ")].sliderValue); // 1 or 3
+                if (_BBEEQ.BBEMachQ < 1) _BBEEQ.BBEMachQ = 1; else _BBEEQ.BBEMachQ = 3;
+                base.CF_updateText("Value_BBEMachQ", _BBEEQ.BBEMachQ.ToString());
 
-            //WriteLog("BBESurr");
-            _BBEEQ.BBESurr = (sbyte)(buttonArray[CF_getButtonID("Slider_BBESurr")].sliderValue);
-            if (_BBEEQ.BBESurr <= 0) _BBEEQ.BBESurr = 0;
-            if (_BBEEQ.BBESurr >= 10) _BBEEQ.BBESurr = 10;
-            base.CF_updateText("Value_BBESurr", _BBEEQ.BBESurr.ToString() + "dB");
+                //WriteLog("BBESurr");
+                _BBEEQ.BBESurr = (sbyte)(buttonArray[CF_getButtonID("Slider_BBESurr")].sliderValue);
+                if (_BBEEQ.BBESurr <= 0) _BBEEQ.BBESurr = 0;
+                if (_BBEEQ.BBESurr >= 10) _BBEEQ.BBESurr = 10;
+                base.CF_updateText("Value_BBESurr", _BBEEQ.BBESurr.ToString() + "dB");
 
-            //WriteLog("BBEMp");
-            _BBEEQ.BBEMp = (sbyte)(buttonArray[CF_getButtonID("Slider_BBEMp")].sliderValue);
-            if (_BBEEQ.BBEMp <= 0) _BBEEQ.BBEMp = 0;
-            if (_BBEEQ.BBEMp >= 10) _BBEEQ.BBEMp = 10;
-            base.CF_updateText("Value_BBEMp", _BBEEQ.BBEMp.ToString() + "dB");
+                //WriteLog("BBEMp");
+                _BBEEQ.BBEMp = (sbyte)(buttonArray[CF_getButtonID("Slider_BBEMp")].sliderValue);
+                if (_BBEEQ.BBEMp <= 0) _BBEEQ.BBEMp = 0;
+                if (_BBEEQ.BBEMp >= 10) _BBEEQ.BBEMp = 10;
+                base.CF_updateText("Value_BBEMp", _BBEEQ.BBEMp.ToString() + "dB");
 
-            //WriteLog("BBEHpF");
-            _BBEEQ.BBEHpF = (byte)(buttonArray[CF_getButtonID("Slider_BBEHpF")].sliderValue * 10);
-            if (_BBEEQ.BBEHpF <= 20) _BBEEQ.BBEHpF = 20;
-            if (_BBEEQ.BBEHpF >= 250) _BBEEQ.BBEHpF = 250;
-            base.CF_updateText("Value_BBEHpF", _BBEEQ.BBEHpF.ToString() + "Hz");
+                //WriteLog("BBEHpF");
+                _BBEEQ.BBEHpF = (byte)(buttonArray[CF_getButtonID("Slider_BBEHpF")].sliderValue * 10);
+                if (_BBEEQ.BBEHpF <= 20) _BBEEQ.BBEHpF = 20;
+                if (_BBEEQ.BBEHpF >= 250) _BBEEQ.BBEHpF = 250;
+                base.CF_updateText("Value_BBEHpF", _BBEEQ.BBEHpF.ToString() + "Hz");
 
-            //WriteLog("BBEHiMode");
-            _BBEEQ.BBEHiMode = (sbyte)(buttonArray[CF_getButtonID("Slider_BBEHiMode")].sliderValue);
-            if (_BBEEQ.BBEHiMode <= 0) _BBEEQ.BBEHiMode = 0;
-            if (_BBEEQ.BBEHiMode >= 10) _BBEEQ.BBEHiMode = 10;
-            base.CF_updateText("Value_BBEHiMode", _BBEEQ.BBEHiMode.ToString() + "dB");
+                //WriteLog("BBEHiMode");
+                _BBEEQ.BBEHiMode = (sbyte)(buttonArray[CF_getButtonID("Slider_BBEHiMode")].sliderValue);
+                if (_BBEEQ.BBEHiMode <= 0) _BBEEQ.BBEHiMode = 0;
+                if (_BBEEQ.BBEHiMode >= 10) _BBEEQ.BBEHiMode = 10;
+                base.CF_updateText("Value_BBEHiMode", _BBEEQ.BBEHiMode.ToString() + "dB");
 
-            //WriteLog("Headroom");
-            _BBEEQ.HeadRoom = (sbyte)(buttonArray[CF_getButtonID("Slider_HeadRoom")].sliderValue);
-            if (_BBEEQ.HeadRoom <= -12) _BBEEQ.HeadRoom = -12;
-            if (_BBEEQ.HeadRoom >= 0) _BBEEQ.HeadRoom = 0;
-            base.CF_updateText("Value_HeadRoom", _BBEEQ.HeadRoom.ToString() + "dB");
+                //WriteLog("Headroom");
+                _BBEEQ.HeadRoom = (sbyte)(buttonArray[CF_getButtonID("Slider_HeadRoom")].sliderValue);
+                if (_BBEEQ.HeadRoom <= -12) _BBEEQ.HeadRoom = -12;
+                if (_BBEEQ.HeadRoom >= 0) _BBEEQ.HeadRoom = 0;
+                base.CF_updateText("Value_HeadRoom", _BBEEQ.HeadRoom.ToString() + "dB");
 
-            //WriteLog("Save BBE Settings");
-            if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
+                //WriteLog("Save BBE Settings");
+                if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle Timer Updates(), " + errmsg.ToString());
+            }
 
-            //WriteLog("Timer Updates() - start");
+            WriteDebug("Timer Updates() - start");
         }
 
         private void BBEObjects(bool boolStatus)
@@ -1132,60 +1270,84 @@ namespace DABFMMonkey
             WriteLog("BBEObjects() - start");
 
             //Move to init?
-            string[] aryBBEGUIItems = new string[] { "BBELo", "BBEHi", "BBECFreq", "BBEMachFreq", "BBEMachGain", "BBEMachQ", "BBESurr", "BBEMp", "BBEHpF", "BBEHiMode", "HeadRoom" };
-            string[] aryBBEGUILang = this.pluginLang.ReadField("/APPLANG/SETUP/BBETEXT").Split(',');
-
-            //Show the sliders with header and values
-            for (sbyte i = 0; i < aryBBEGUIItems.Length; i++)
+            string[] aryBBEGUIItems = null;
+            string[] aryBBEGUILang = null;
+            
+            try
+            {                
+                aryBBEGUIItems = new string[] { "BBELo", "BBEHi", "BBECFreq", "BBEMachFreq", "BBEMachGain", "BBEMachQ", "BBESurr", "BBEMp", "BBEHpF", "BBEHiMode", "HeadRoom" };
+                aryBBEGUILang = this.pluginLang.ReadField("/APPLANG/SETUP/BBETEXT").Split(',');
+            }
+            catch (Exception errmsg)
             {
-                WriteLog("Update '" + i.ToString() + "' '" + aryBBEGUIItems[i] + "' '" + aryBBEGUILang[i] + "'");
-
-                //Enable Header and Value labels
-                CF_setLabelEnableFlag("Label_" + aryBBEGUIItems[i], boolStatus);
-                CF_setLabelEnableFlag("Value_" + aryBBEGUIItems[i], boolStatus);
-                CF_updateText("Label_" + aryBBEGUIItems[i], aryBBEGUILang[i]);
-
-                //Slider status
-                base.CF_setButtonEnableFlag("Slider_" + aryBBEGUIItems[i], boolStatus);
-                buttonArray[CF_getButtonID("Slider_" + aryBBEGUIItems[i])].sliderControl = boolStatus;
+                WriteLog("Failed to split BBETEXT, " + errmsg.ToString());
             }
 
-            WriteLog("Success: " + _BBEEQ.BBEOn.ToString() + " " + _BBEEQ.EQMode.ToString() + " " + _BBEEQ.BBELo.ToString() + " " + _BBEEQ.BBEHi.ToString() + " " + _BBEEQ.BBECFreq.ToString() + " " + _BBEEQ.BBEMachFreq.ToString() + " " + _BBEEQ.BBEMachGain.ToString() + " " + _BBEEQ.BBEMachQ.ToString() + " " + _BBEEQ.BBESurr.ToString() + " " + _BBEEQ.BBEMp.ToString() + " " + _BBEEQ.BBEHpF.ToString() + " " + _BBEEQ.BBEHiMode.ToString());
+            try
+            {
+                //Show the sliders with header and values
+                for (sbyte i = 0; i < aryBBEGUIItems.Length; i++)
+                {
+                    WriteLog("Update '" + i.ToString() + "' '" + aryBBEGUIItems[i] + "' '" + aryBBEGUILang[i] + "'");
 
-            //Set Slider values and captions
-            WriteLog("Slider values");
-            base.CF_setSlider("Slider_BBELo", _BBEEQ.BBELo);
-            WriteLog("BBELo: " + _BBEEQ.BBELo.ToString());
+                    //Enable Header and Value labels
+                    CF_setLabelEnableFlag("Label_" + aryBBEGUIItems[i], boolStatus);
+                    CF_setLabelEnableFlag("Value_" + aryBBEGUIItems[i], boolStatus);
+                    CF_updateText("Label_" + aryBBEGUIItems[i], aryBBEGUILang[i]);
 
-            base.CF_setSlider("Slider_BBEHi", _BBEEQ.BBEHi);
-            WriteLog("BBEHi: " + _BBEEQ.BBEHi.ToString());
+                    //Slider status
+                    base.CF_setButtonEnableFlag("Slider_" + aryBBEGUIItems[i], boolStatus);
+                    buttonArray[CF_getButtonID("Slider_" + aryBBEGUIItems[i])].sliderControl = boolStatus;
+                }
 
-            if (_BBEEQ.BBECFreq == 0) base.CF_setSlider("Slider_BBECFreq", 0); else base.CF_setSlider("Slider_BBECFreq", 2);
-            WriteLog("BBECFreq: " + _BBEEQ.BBECFreq.ToString());
+                WriteLog("Success: " + _BBEEQ.BBEOn.ToString() + " " + _BBEEQ.EQMode.ToString() + " " + _BBEEQ.BBELo.ToString() + " " + _BBEEQ.BBEHi.ToString() + " " + _BBEEQ.BBECFreq.ToString() + " " + _BBEEQ.BBEMachFreq.ToString() + " " + _BBEEQ.BBEMachGain.ToString() + " " + _BBEEQ.BBEMachQ.ToString() + " " + _BBEEQ.BBESurr.ToString() + " " + _BBEEQ.BBEMp.ToString() + " " + _BBEEQ.BBEHpF.ToString() + " " + _BBEEQ.BBEHiMode.ToString());
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to show sliders with header and values, " + errmsg.ToString());
+            }
 
-            base.CF_setSlider("Slider_BBEMachFreq", ((_BBEEQ.BBEMachFreq - 60) / 30));
-            WriteLog("BBEMachFreq: " + _BBEEQ.BBEMachFreq.ToString());
+            try
+            {
+                //Set Slider values and captions
+                WriteLog("Slider values");
+                base.CF_setSlider("Slider_BBELo", _BBEEQ.BBELo);
+                WriteLog("BBELo: " + _BBEEQ.BBELo.ToString());
 
-            base.CF_setSlider("Slider_BBEMachGain", (_BBEEQ.BBEMachGain / 4));
-            WriteLog("BBEMachGain: " + _BBEEQ.BBEMachGain.ToString());
+                base.CF_setSlider("Slider_BBEHi", _BBEEQ.BBEHi);
+                WriteLog("BBEHi: " + _BBEEQ.BBEHi.ToString());
 
-            if (_BBEEQ.BBEMachQ <= 1) base.CF_setSlider("Slider_BBEMachQ", 0); else base.CF_setSlider("Slider_BBEMachQ", 2);
-            WriteLog("BBEMachQ: " + _BBEEQ.BBEMachQ.ToString());
+                if (_BBEEQ.BBECFreq == 0) base.CF_setSlider("Slider_BBECFreq", 0); else base.CF_setSlider("Slider_BBECFreq", 2);
+                WriteLog("BBECFreq: " + _BBEEQ.BBECFreq.ToString());
 
-            base.CF_setSlider("Slider_BBESurr", _BBEEQ.BBESurr);
-            WriteLog("BBESurr: " + _BBEEQ.BBESurr.ToString());
+                base.CF_setSlider("Slider_BBEMachFreq", ((_BBEEQ.BBEMachFreq - 60) / 30));
+                WriteLog("BBEMachFreq: " + _BBEEQ.BBEMachFreq.ToString());
 
-            base.CF_setSlider("Slider_BBEMp", _BBEEQ.BBEMp);
-            WriteLog("BBEMp: " + _BBEEQ.BBEMp.ToString());
+                base.CF_setSlider("Slider_BBEMachGain", (_BBEEQ.BBEMachGain / 4));
+                WriteLog("BBEMachGain: " + _BBEEQ.BBEMachGain.ToString());
 
-            base.CF_setSlider("Slider_BBEHpF", (_BBEEQ.BBEHpF / 10));
-            WriteLog("BBEHpF: " + _BBEEQ.BBEHpF.ToString());
+                if (_BBEEQ.BBEMachQ <= 1) base.CF_setSlider("Slider_BBEMachQ", 0); else base.CF_setSlider("Slider_BBEMachQ", 2);
+                WriteLog("BBEMachQ: " + _BBEEQ.BBEMachQ.ToString());
 
-            base.CF_setSlider("Slider_BBEHiMode", _BBEEQ.BBEHiMode);
-            WriteLog("BBEHiMode: " + _BBEEQ.BBEHiMode.ToString());
+                base.CF_setSlider("Slider_BBESurr", _BBEEQ.BBESurr);
+                WriteLog("BBESurr: " + _BBEEQ.BBESurr.ToString());
 
-            base.CF_setSlider("Slider_HeadRoom", _BBEEQ.HeadRoom);
-            WriteLog("HeadRoom: " + _BBEEQ.HeadRoom.ToString());
+                base.CF_setSlider("Slider_BBEMp", _BBEEQ.BBEMp);
+                WriteLog("BBEMp: " + _BBEEQ.BBEMp.ToString());
+
+                base.CF_setSlider("Slider_BBEHpF", (_BBEEQ.BBEHpF / 10));
+                WriteLog("BBEHpF: " + _BBEEQ.BBEHpF.ToString());
+
+                base.CF_setSlider("Slider_BBEHiMode", _BBEEQ.BBEHiMode);
+                WriteLog("BBEHiMode: " + _BBEEQ.BBEHiMode.ToString());
+
+                base.CF_setSlider("Slider_HeadRoom", _BBEEQ.HeadRoom);
+                WriteLog("HeadRoom: " + _BBEEQ.HeadRoom.ToString());
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to Set Slider values and captions, " + errmsg.ToString());
+            }
 
             WriteLog("BBEObjects() - end");
         }
@@ -1193,72 +1355,89 @@ namespace DABFMMonkey
         //Set BBE
         private void MixerBBE()
         {
-            //Set to BBE mode
-            _BBEEQ.BBEOn = BBEStatus.BBE;
-           
-            //Write to board
-            if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
-            do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
+            try
+            {
+                //Set to BBE mode
+                _BBEEQ.BBEOn = BBEStatus.BBE;
 
-            //Re-draw the Mixer screen with new button statuses
-            BBEClick();
+                //Write to board
+                if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
+                do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
+
+                //Re-draw the Mixer screen with new button statuses
+                BBEClick();
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle MixerBBE(), " + errmsg.ToString());
+            }
         }
         
         //Mixer Eq button
         private void MixerEq()
         {
-            if (!boolEQFirstPress)
+            try
             {
-                boolEQFirstPress = true;
-
-                // Set to EQ Mode
-                _BBEEQ.BBEOn = BBEStatus.EQ;
-
-                //Write to board
-                if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
-                do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
-            }
-            else
-            {
-                try
+                if (!boolEQFirstPress)
                 {
-                    object tempobject;
-                    string resultvalue, resulttext;
-                    string[] aryEQList = this.pluginLang.ReadField("/APPLANG/SETUP/EQMODES").Split(',');
+                    boolEQFirstPress = true;
 
-                    // Create a listview with the number of items in the Array
-                    CFControls.CFListViewItem[] textoptions = new CFControls.CFListViewItem[aryEQList.Length];
+                    // Set to EQ Mode
+                    _BBEEQ.BBEOn = BBEStatus.EQ;
 
-                    // Populate the list with the options                
-                    for (int i = 0; i < aryEQList.Length; i++)
-                    {
-                        WriteLog("EQ Mode: '" + aryEQList[i].ToString() + "'");
-                        textoptions[i] = new CFControls.CFListViewItem(aryEQList[i].ToString(), i.ToString(), -1, false);
-                    }
-
-                    // Display the options
-                    if (this.CF_systemDisplayDialog(CF_Dialogs.FileBrowser,
-                       this.pluginLang.ReadField("/APPLANG/SETUP/MIXER"),
-                       this.pluginLang.ReadField("/APPLANG/SETUP/MIXER"),
-                       _BBEEQ.EQMode.ToString(), out resultvalue, out resulttext, out tempobject, textoptions, false, false, false, false, false, false, 1) == DialogResult.OK)
-                    {
-                        WriteLog("Result text and value: " + resulttext + " " + resultvalue);
-                        _BBEEQ.BBEOn = BBEStatus.EQ;
-                        _BBEEQ.EQMode = sbyte.Parse(resultvalue);
-
-                        //Set EQ mode
-                        if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
-                        do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
-                    }
-
-                    //MixerEQ button text matches current EQ
-                    base.CF_updateButtonText("MixerEQ", resulttext);
+                    //Write to board
+                    if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
+                    do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
                 }
-                catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
-            }
+                else
+                {
+                    try
+                    {
+                        object tempobject;
+                        string resultvalue, resulttext;
+                        string[] aryEQList = this.pluginLang.ReadField("/APPLANG/SETUP/EQMODES").Split(',');
 
-            //Re-draw the Mixer screen with new button statuses
-            BBEClick();
+                        // Create a listview with the number of items in the Array
+                        CFControls.CFListViewItem[] textoptions = new CFControls.CFListViewItem[aryEQList.Length];
+
+                        // Populate the list with the options                
+                        for (int i = 0; i < aryEQList.Length; i++)
+                        {
+                            WriteLog("EQ Mode: '" + aryEQList[i].ToString() + "'");
+                            textoptions[i] = new CFControls.CFListViewItem(aryEQList[i].ToString(), i.ToString(), -1, false);
+                        }
+
+                        // Display the options
+                        if (this.CF_systemDisplayDialog(CF_Dialogs.FileBrowser,
+                           this.pluginLang.ReadField("/APPLANG/SETUP/MIXER"),
+                           this.pluginLang.ReadField("/APPLANG/SETUP/MIXER"),
+                           _BBEEQ.EQMode.ToString(), out resultvalue, out resulttext, out tempobject, textoptions, false, false, false, false, false, false, 1) == DialogResult.OK)
+                        {
+                            WriteLog("Result text and value: " + resulttext + " " + resultvalue);
+                            _BBEEQ.BBEOn = BBEStatus.EQ;
+                            _BBEEQ.EQMode = sbyte.Parse(resultvalue);
+
+                            //Set EQ mode
+                            if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
+                            do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
+                        }
+
+                        //MixerEQ button text matches current EQ
+                        base.CF_updateButtonText("MixerEQ", resulttext);
+                    }
+                    catch (Exception errmsg)
+                    {
+                        WriteLog("Failed to display the EQ modes, " + errmsg.ToString());
+                    }
+                }
+
+                //Re-draw the Mixer screen with new button statuses
+                BBEClick();
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle MixerEq(), " + errmsg.ToString());
+            }
         }
 
         //No BBE or EQ
@@ -1275,7 +1454,10 @@ namespace DABFMMonkey
                 do { Thread.Sleep(10); } while (RadioCommand != MonkeyCommand.NONE);
 
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle MixerOff(), " + errmsg.ToString());
+            }
 
             //Re-draw the Mixer screen with new button statuses
             BBEClick();
@@ -1319,9 +1501,9 @@ namespace DABFMMonkey
                     SetSelectedValue(selection);
                 }
             }
-            catch (Exception exception)
+            catch (Exception errmsg)
             {
-                CFTools.writeError(exception.Message, exception.StackTrace);
+                WriteLog("Failed to handle OnListClick(), " + errmsg.ToString());
             }
 
             WriteLog("OnListClick - end");
@@ -1332,50 +1514,57 @@ namespace DABFMMonkey
         {
             WriteLog("SetSelectedValue - Start");
 
-            if (selection != -1)
+            try
             {
-                intNewDABFMMode = _favStationsList[selection].Band;
-                string strFindProgram = _favStationsList[selection].DABLongName;
-                WriteLog("FavLstSingleClick()- Band/Freq=" + intNewDABFMMode.ToString() + "/" + intNewStation.ToString() + "/" + strFindProgram);
-
-                //If DAB mode, find the correct index, if FM, just set the frequency
-                intNewStation = 999;
-                switch (intNewDABFMMode)
+                if (selection != -1)
                 {
-                    case RADIO_TUNE_BAND.DAB_BAND:
-                        //Find the board Index # for DABLongName
-                        for (UInt32 j = 0; j < aryDABChannelsLong.Length; j++)
-                        {
-                            WriteLog("Looking for '" + strFindProgram + "'   Channel Name (Long): '" + aryDABChannelsLong[j] + "'");
+                    intNewDABFMMode = _favStationsList[selection].Band;
+                    string strFindProgram = _favStationsList[selection].DABLongName;
+                    WriteLog("FavLstSingleClick()- Band/Freq=" + intNewDABFMMode.ToString() + "/" + intNewStation.ToString() + "/" + strFindProgram);
 
-                            //If a match is found, note our position and exit out
-                            if (strFindProgram == aryDABChannelsLong[j])
+                    //If DAB mode, find the correct index, if FM, just set the frequency
+                    intNewStation = 999;
+                    switch (intNewDABFMMode)
+                    {
+                        case RADIO_TUNE_BAND.DAB_BAND:
+                            //Find the board Index # for DABLongName
+                            for (UInt32 j = 0; j < aryDABChannelsLong.Length; j++)
                             {
-                                WriteLog("Found a match at: '" + j.ToString() + "' Array: '" + aryDABChannelsLong[j] + "'");
-                                // Update intNewStation with our results
-                                intNewStation = j;
-                                break; //Found it, so exit
-                            }
-                        }
-                        break;
-                    case RADIO_TUNE_BAND.FM_BAND:
-                        intNewStation = _favStationsList[selection].Frequency;
-                        break;
-                }
+                                WriteLog("Looking for '" + strFindProgram + "'   Channel Name (Long): '" + aryDABChannelsLong[j] + "'");
 
-                //If new frequency is not valid, DAB mode failed to find the program
-                if (intNewStation != 999)
-                {
-                    //Play it
-                    if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.PLAYSTREAM;
-                }
-                else
-                {
-                    //No match is found.
-                    this.CF_systemDisplayDialog(CF_Dialogs.OkBox, base.pluginLang.ReadField("/APPLANG/SETUP/FAVNOTFOUND"));
+                                //If a match is found, note our position and exit out
+                                if (strFindProgram == aryDABChannelsLong[j])
+                                {
+                                    WriteLog("Found a match at: '" + j.ToString() + "' Array: '" + aryDABChannelsLong[j] + "'");
+                                    // Update intNewStation with our results
+                                    intNewStation = j;
+                                    break; //Found it, so exit
+                                }
+                            }
+                            break;
+                        case RADIO_TUNE_BAND.FM_BAND:
+                            intNewStation = _favStationsList[selection].Frequency;
+                            break;
+                    }
+
+                    //If new frequency is not valid, DAB mode failed to find the program
+                    if (intNewStation != 999)
+                    {
+                        //Play it
+                        if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.PLAYSTREAM;
+                    }
+                    else
+                    {
+                        //No match is found.
+                        this.CF_systemDisplayDialog(CF_Dialogs.OkBox, base.pluginLang.ReadField("/APPLANG/SETUP/FAVNOTFOUND"));
+                    }
                 }
             }
-
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle SetSelectedValue(), " + errmsg.ToString());
+            }
+            
             WriteLog("SetSelectedValue - End");
         }
 
@@ -1384,12 +1573,20 @@ namespace DABFMMonkey
         private int GetSelectedValue()
         {
             WriteLog("GetSelectedValue - Start");
+            int nSelected = -1;
 
-            if (listMain.SelectedItems.Count <= 0) return -1;
+            try
+            {
+                if (listMain.SelectedItems.Count <= 0) return -1;
 
-            int nSelected = listMain.SelectedItems[0];
-            if (nSelected < 0) return -1;
-
+                nSelected = listMain.SelectedItems[0];
+                if (nSelected < 0) return -1;
+            }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle GetSelectedValue(), " + errmsg.ToString());
+            }
+            
             WriteLog("GetSelectedValue - End");
             return nSelected;
         }
@@ -1398,16 +1595,25 @@ namespace DABFMMonkey
         private void SetListVisable(bool vis)
         {
             WriteLog("SetListVisable - Start");
-            if (listMain.InvokeRequired)
-            {
-                SetListVisableCallback d = new SetListVisableCallback(SetListVisable);
-                this.Invoke(d, new object[] { vis });
 
-            }
-            else
+            try
             {
-                listMain.Visible = vis;
+                if (listMain.InvokeRequired)
+                {
+                    SetListVisableCallback d = new SetListVisableCallback(SetListVisable);
+                    this.Invoke(d, new object[] { vis });
+
+                }
+                else
+                {
+                    listMain.Visible = vis;
+                }
             }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle SetListVisable(), " + errmsg.ToString());
+            }
+
             WriteLog("SetListVisable - End");
         }
 
@@ -1422,7 +1628,30 @@ namespace DABFMMonkey
                 else
                     listMain.PageUp();
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle pagingTimer_Tick(), " + errmsg.ToString());
+            }
+        }
+
+        private void OnLinkedItemClick(object sender, LinkedItemArgs e)
+        {
+            WriteLog("OnLinkedItemClick - Start");
+
+            // You could have other linked actions, and can test for which on it is by checking the LinkId property
+            if (e.LinkId == "Delete")
+            {
+                int nSelected = e.ItemId;
+                if (nSelected < 0) return;
+                DeleteClick(nSelected);
+            }
+            else if (e.LinkId == "Blacklist")
+            {
+                int nSelected = e.ItemId;
+                if (nSelected < 0) return;
+                BlacklistClick(nSelected);
+            }
+            WriteLog("OnLinkedItemClick - end");
         }
 
 #endregion

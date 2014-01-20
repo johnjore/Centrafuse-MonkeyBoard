@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2012, 2013, John Jore
+ * Copyright 2012, 2013, 2014, John Jore
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by

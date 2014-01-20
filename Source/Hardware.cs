@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2012, 2013, John Jore
+ * Copyright 2012, 2013, 2014, John Jore
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -19,8 +19,12 @@
  * All Hardware related functions
 */
 
+//New CF_Actions.PAUSE and CF_Actions.PLAY (directly play and pause), 
+//http://www.mp3car.com/centrafuse/146940-centrafuse-3-6-official-announcement-and-release-notes.html
+
+
 namespace DABFMMonkey
-{  
+{
     using System;
     using System.Runtime.InteropServices;
     using centrafuse.Plugins;
@@ -28,6 +32,7 @@ namespace DABFMMonkey
     using System.Data;
     using System.Drawing;
     using System.Net;
+    using System.Windows.Forms;
 
     public partial class DABFMMonkey
     {
@@ -52,20 +57,19 @@ namespace DABFMMonkey
         private Mode STEREOMODE = Mode.UNDEFINED;                               // Auto or forced mono
         private bool boolEnableInternetUsage = false;                           // Allow Internet connectivity
         private bool boolEnableRadioVIS = false;                                // By default, don't use RadioVIS
-        //UInt32 intPlayIndex = 999;                                            // Active freq/channel /**/
+        private bool init = false;                                              // Is Radio initialized? Default is not initialized
         //private bool boolClearBoardBeforeScan = false;                        // Clear board's existing programs when performing a DAB scan?
         
-        protected static bool init = false;                                      // Is Radio initialized? Default is not initilizied  /**/ volatile 
-
         //RDS information
-        private string strCachedProgramText = ""; // Used to cache the ProgramText
+        private string strCachedProgramText = "";                               // Used to cache the ProgramText
         private string _stationText = "";
         private string _stationName = "";
        
-        string DABFMMonkeyCOMPort = ""; //Used for COM Port override of autodetection
+        string DABFMMonkeyCOMPort = "";                                         //Used for COM Port override of autodetection
 
         // Read from XML Config file, DABXMLConfigFile. These are default values if we can't read from XML
-        private Volume DABFMMonkeyVolume = Volume.Max; // min=0 / max=16
+        private Volume DABFMMonkeyVolume = Volume.Max;                          // min=0 / max=16
+        private Volume DABFMMonkeyATTVolume = Volume.Max;                       // ATT volume level
         private string DABFMMonkeyUSBVID = "VID_04D8";        
         private string[] aryDABFMMonkeyUSBPID = new string[] {"PID_000A", "PID_F6E0"};
         private string[] aryProgramType = new string[] { "N/A","News","Current Affairs","Information","Sport","Education","Drama","Arts","Science","Talk",
@@ -296,39 +300,52 @@ namespace DABFMMonkey
         {
             WriteLog("SetupCOMPortInformation() - start");
 
-            ManagementObjectSearcher searcherPNP = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity");
-            foreach (ManagementObject mo in searcherPNP.Get())
+            try
             {
-                string name = mo["Name"].ToString();
-                // Name will have a substring like "(COM12)" in it.
-                if (name.Contains("(COM"))
+                ManagementObjectSearcher searcherPNP = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity");
+                foreach (ManagementObject mo in searcherPNP.Get())
                 {
-                    string HardwareID = mo["DeviceID"].ToString();
-                    WriteLog("Enumerating USBCOM Devices: '" + name + "' HardwareID: '" + HardwareID + "'");
-
-                    //There can be multiple PIDs, search for them all
-                    for (int j = 0; j < aryDABFMMonkeyUSBPID.Length; j++)
+                    string name = mo["Name"].ToString();
+                    // Name will have a substring like "(COM12)" in it.
+                    if (name.Contains("(COM"))
                     {
-                        string DABFMMonkeyUSBVIDPID = "USB\\" + DABFMMonkeyUSBVID + "&" + aryDABFMMonkeyUSBPID[j];
-                        WriteLog("Looking for: '" + DABFMMonkeyUSBVIDPID + "'");
-
-                        if (HardwareID.IndexOf(DABFMMonkeyUSBVIDPID) == 0)
+                        try
                         {
-                            WriteLog("Match. Found MonkeyBoard on: '" + name + "'");
-                            string strPort = name.Substring(name.LastIndexOf("(") + 1, name.LastIndexOf(")") - name.LastIndexOf("(") - 1);
+                            string HardwareID = mo["DeviceID"].ToString();
+                            WriteLog("Enumerating USBCOM Devices: '" + name + "' HardwareID: '" + HardwareID + "'");
 
-                            //Convert port to Windows format
-                            strPort = "\\\\.\\" + strPort;
+                            //There can be multiple PIDs, search for them all
+                            for (int j = 0; j < aryDABFMMonkeyUSBPID.Length; j++)
+                            {
+                                string DABFMMonkeyUSBVIDPID = "USB\\" + DABFMMonkeyUSBVID + "&" + aryDABFMMonkeyUSBPID[j];
+                                WriteLog("Looking for: '" + DABFMMonkeyUSBVIDPID + "'");
 
-                            WriteLog("COM Port '" + strPort + "'");
+                                if (HardwareID.IndexOf(DABFMMonkeyUSBVIDPID) == 0)
+                                {
+                                    try
+                                    {
+                                        WriteLog("Match. Found MonkeyBoard on: '" + name + "'");
+                                        string strPort = name.Substring(name.LastIndexOf("(") + 1, name.LastIndexOf(")") - name.LastIndexOf("(") - 1);
 
-                            // Return port name
-                            return strPort;
+                                        //Convert port to Windows format
+                                        strPort = "\\\\.\\" + strPort;
+
+                                        WriteLog("COM Port '" + strPort + "'");
+
+                                        // Return port name
+                                        return strPort;
+                                    }
+                                    catch (Exception ex) { WriteLog("FoundMatch, but failed: '" + ex.Message); }
+                                }
+                                else WriteLog("No Match on: " + name);
+                            }
                         }
-                        else WriteLog("No Match on: " + name);
+                        catch (Exception ex) { WriteLog("Processing COM port failed: '" + ex.Message); }
                     }
                 }
             }
+            catch (Exception ex) { WriteLog("SetupCOMPortInformation failed: '" + ex.Message); }
+
 
             WriteLog("SetupCOMPortInformation() - end");
             return "";
@@ -346,7 +363,10 @@ namespace DABFMMonkey
             WriteLog("InitializeRadio() - start");            
 
             //Find the COM port the DABFMMonkey is using, if we're not using override from XML
-            if (DABFMMonkeyCOMPort == "\\\\.\\") DABFMMonkeyCOMPort = SetupCOMPortInformation();
+            if (DABFMMonkeyCOMPort == "\\\\.\\")
+            {
+                DABFMMonkeyCOMPort = SetupCOMPortInformation();
+            }
             else
             {
                 WriteLog("COM Port Override Detected. Will use '" + DABFMMonkeyCOMPort + "'. Format is COM4 or COM22");
@@ -360,11 +380,13 @@ namespace DABFMMonkey
                     WriteLog("Monkeyboard not found on any COM port and no override detected");
                     this.CF_systemDisplayDialog(CF_Dialogs.OkBox, base.pluginLang.ReadField("/APPLANG/SETUP/BOARDNOTFOUND"));
                 }
-                catch (Exception errmsg) { CFTools.writeError(errmsg.ToString()); }
-
+                catch (Exception errmsg)
+                {
+                    WriteLog("Failed to find COM Port, " + errmsg.ToString());
+                }
+                
                 return false;
             }
-
             WriteLog("Will initialize radio using: '" + DABFMMonkeyCOMPort + "'");
 
             try
@@ -372,10 +394,10 @@ namespace DABFMMonkey
                 init = OpenRadioPort(DABFMMonkeyCOMPort, false);
                 if (!init)
                 {
-                    WriteLog("DABFMMonkey.OpenRadioPort(" + DABFMMonkeyCOMPort + ") Failed, retrying 3 times...");
+                    WriteLog("OpenRadioPort(" + DABFMMonkeyCOMPort + ") Failed, retrying 3 times...");
                     for (int i = 1; i <= 3 && init == false; i++)
                     {
-                        WriteLog("DABFMMonkey.OpenRadioPort(" + DABFMMonkeyCOMPort + ") Retry " + i.ToString() + "...");
+                        WriteLog("OpenRadioPort(" + DABFMMonkeyCOMPort + ") Retry " + i.ToString() + "...");
                         init = OpenRadioPort(DABFMMonkeyCOMPort, true);
                     }
                 }
@@ -404,7 +426,11 @@ namespace DABFMMonkey
                     StoreBBEEQ();
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to Initialize Radio, SetVolume or SetMode, " + errmsg.ToString());
+            }
+
 
             //Let the user know we didn't find the board
             if (!init)
@@ -444,18 +470,21 @@ namespace DABFMMonkey
                     if (WaitForBoard()) if (CloseRadioPort() == false) WriteLog("Error closing radio port"); else WriteLog("Radio port closed");
 
                     // Radio no longer initialized
-                    init = false;
-
+                    this.BeginInvoke(new MethodInvoker(delegate { init = false; }));
+                                        
                     //Mixer
-                    if (!(_isBufferRadio || !(_dabRadioLineDev != "")))
+                    if (!(_isBufferRadio || !(CF_params.Media.recordDevice != "")))
                     {
                         this.WriteLog("CF_pluginClose():  Calling CF_setMixerMute(true)");
-                        base.CF_setMixerMute(_dabRadioLineDev, _dabRadioLine, false, true);
+                        base.CF_setMixerMute(CF_params.Media.recordDevice, CF_params.Media.recordLine, false, true);
                     }
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
-
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to ShutdownRadio(), " + errmsg.ToString());
+            }
+            
             WriteLog("ShutdownRadio() - end");
         }
 
@@ -516,7 +545,7 @@ namespace DABFMMonkey
             {
                 WriteLog("Waiting for Board to be ready: '" + i.ToString() + "...");
                 System.Threading.Thread.Sleep(200);
-                init = sysReady = IsSysReady();
+                this.BeginInvoke(new MethodInvoker(delegate { init = sysReady = IsSysReady(); }));               
             }
 
             //If still not initialized, let the user know
@@ -722,7 +751,10 @@ namespace DABFMMonkey
                         }
                         else WriteLog("Failed - GetProgramInfo");
                     }
-                    catch { WriteLog("Exception Thrown Getting ProgramInfo Data"); }
+                    catch (Exception errmsg)
+                    {
+                        WriteLog("Exception Thrown Getting ProgramInfo Data, " + errmsg.ToString());
+                    }
 
 
                     //DAB Name
@@ -758,7 +790,10 @@ namespace DABFMMonkey
                     }
                 }
             }
-            catch { }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle GetDABNames(), " + errmsg.ToString());
+            }
 
             WriteLog("GetDABNames() - end");
             return boolResult;
@@ -799,7 +834,11 @@ namespace DABFMMonkey
                 else 
                     WriteLog("Failed to get current mode (FM/DAB)");                
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to TuneFreq(), " + errmsg.ToString());
+            }
+
 
             WriteLog("End: TuneFreq(): Freq:" + Freq.ToString());
             return Freq;
@@ -863,7 +902,11 @@ namespace DABFMMonkey
                     if (searchDirection == RADIO_DIRECTION.UP) RadioCommand = MonkeyCommand.NEXTSTREAM; else RadioCommand = MonkeyCommand.PREVSTREAM;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to SeekFreq(), " + errmsg.ToString());
+            }
+
 
             WriteLog("End: SeekFreq()");
         }
@@ -906,7 +949,11 @@ namespace DABFMMonkey
                                     intNewStation = UInt32.Parse(base.pluginConfig.ReadField("/APPCONFIG/LASTFM"));
                                     intNewStation = fixFreq(RADIO_TUNE_BAND.FM_BAND, intNewStation);
                                 }
-                                catch { intNewStation = 100000; }
+                                catch (Exception errmsg)
+                                {
+                                    intNewStation = 100000;
+                                    WriteLog("Failed to get intNewStation when swithing to FM Mode, " + errmsg.ToString());
+                                }
                                 break;
                             case RADIO_TUNE_BAND.FM_BAND:
                                 try 
@@ -915,7 +962,11 @@ namespace DABFMMonkey
                                     intNewStation = UInt32.Parse(base.pluginConfig.ReadField("/APPCONFIG/LASTDAB"));
                                     intNewStation = fixFreq(RADIO_TUNE_BAND.DAB_BAND, intNewStation);
                                 }
-                                catch { intNewStation = 0; }
+                                catch (Exception errmsg)
+                                {
+                                    intNewStation = 0;
+                                    WriteLog("Failed to get intNewStation when swithing to DAB Mode, " + errmsg.ToString());
+                                }
                                 break;
                             default:
                                 //Should never reach this
@@ -945,8 +996,11 @@ namespace DABFMMonkey
                     return false;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
-
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to SetTuneBand(), " + errmsg.ToString());
+            }
+            
             WriteLog("SetTuneBand() - end: Error, failed to set band");
             return false;
         }
@@ -986,7 +1040,10 @@ namespace DABFMMonkey
                 WriteLog("CF_pluginCMLCommand " + DABFMMonkeyVolume.ToString());
                 this.pluginConfig.WriteField("/APPCONFIG/VOLUME", DABFMMonkeyVolume.ToString(), true);
             }
-            catch { }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to write VOLUME to disk, " + errmsg.ToString());
+            }
 
 
             //Status to user, if at either extreme value, display text so user knows to let go of button
@@ -1104,12 +1161,13 @@ namespace DABFMMonkey
         /// </return>
         private void IOCommsSub()
         {
-            WriteLog("Start IOCommsSub()");
+            WriteDebug("Start IOCommsSub()");
 
             /**/
             //bool init1 = WaitForBoard();
             //WriteLog("init1 : " + init1.ToString());
-            WriteLog("init : " + init.ToString());
+
+            WriteDebug("init : " + init.ToString());
 
             if (init) // && WaitForBoard())
             {
@@ -1119,6 +1177,11 @@ namespace DABFMMonkey
                 //Start Board Commands
                 switch (RadioCommand)
                 {
+                    case MonkeyCommand.SETATTVOLUME:
+                        WriteLog("Start - SetATTVolume");
+                        SetBoardVolume(DABFMMonkeyATTVolume);
+                        WriteLog("End - SetATTVolume");
+                        break;
                     case MonkeyCommand.SETVOLUME:
                         WriteLog("Start - SetVolume");
                         SetBoardVolume(DABFMMonkeyVolume);
@@ -1346,29 +1409,29 @@ namespace DABFMMonkey
                 intPlayStatus = DABStatus.Unknown;
                 try
                 {
-                    WriteLog("ShowPlayStatus() - start");
+                    WriteDebug("ShowPlayStatus() - start");
                     if (WaitForBoard()) intPlayStatus = GetPlayStatus();
 
                     if ((int)intPlayStatus >= 0 && (int)intPlayStatus <= aryDABStatus.Length)                        
                     {
-                        WriteLog("Status: " + aryDABStatus[(int)intPlayStatus]);
+                        WriteDebug("Status: " + aryDABStatus[(int)intPlayStatus]);
 
                         /**/
                         // This is a workaround to restart audio if it stops for no reason
                         // Usually the "no reason" is when RadioVIS starts. Maybe it starves another thread of resources long enough to kill the board?
                         if ((boolEnableAudio) && (intPlayStatus == DABStatus.Stop))
                         {
-                            WriteLog("Error: Audio stopped for no reason. Starting it");
+                            WriteDebug("Error: Audio stopped for no reason. Starting it");
                             PlayStream(intDABFMMode, intCurrentStation); // Resume
                         }
                     }
-                    else WriteLog("Status: Unknown");
+                    else WriteDebug("Status: Unknown");
 
-                    WriteLog("ShowPlayStatus() - end");
+                    WriteDebug("ShowPlayStatus() - end");
                 }
                 catch
                 {
-                    WriteLog("Status: Unknown");
+                    WriteDebug("Status: Unknown");
                 }
 
                 //If Status is not "Playing", don't gather more information from board
@@ -1381,17 +1444,16 @@ namespace DABFMMonkey
                     intDABFMModeTmp = GetPlayMode();
                     if ((intDABFMModeTmp == RADIO_TUNE_BAND.DAB_BAND) || (intDABFMModeTmp == RADIO_TUNE_BAND.FM_BAND)) intDABFMMode = intDABFMModeTmp;
                 }
-                catch
+                catch (Exception errmsg)
                 {
                     intDABFMMode = RADIO_TUNE_BAND.UNDEFINED;
-                    WriteLog("Exception Thrown - GetPlayMode Data");
+                    WriteLog("Exception Thrown - GetPlayMode Data, " + errmsg.ToString());
                 }
                 
-
                 //Get current freq / channel                
                 try
                 {
-                    WriteLog("GetPlayIndex - start");
+                    WriteDebug("GetPlayIndex - start");
 
                     //Initial value is "Not supported"
                     //intCurrentStation = 999;
@@ -1404,23 +1466,27 @@ namespace DABFMMonkey
                     {
                         case RADIO_TUNE_BAND.FM_BAND:
                             if ((intPlayIndex >= 87500) && (intPlayIndex <= 108000)) intCurrentStation = intPlayIndex;
-                            WriteLog("FM : " + intCurrentStation.ToString());
+                            WriteDebug("FM : " + intCurrentStation.ToString());
                             break;
                         case RADIO_TUNE_BAND.DAB_BAND:
                             intTotalProgram = GetTotalProgram();
                             if (intTotalProgram < 0 || intTotalProgram > MAXDABChannels) intTotalProgram = 0;
-                            WriteLog("TotalProgram() : '" + intTotalProgram.ToString() + "'");
+                            WriteDebug("TotalProgram() : '" + intTotalProgram.ToString() + "'");
 
                             if ((intPlayIndex >= 0) && (intPlayIndex < intTotalProgram)) intCurrentStation = intPlayIndex;
-                            WriteLog("DAB : " + intCurrentStation.ToString());
+                            WriteDebug("DAB : " + intCurrentStation.ToString());
                             break;
                         default:
-                            WriteLog("Undefined Playmode");
+                            WriteDebug("Undefined Playmode");
                             break;
                     }
-                    WriteLog("GetPlayIndex - End");
+                    WriteDebug("GetPlayIndex - End");
                 }
-                catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+                catch (Exception errmsg)
+                {
+                    WriteLog("Failed to GetCurrent Freq / Channel, " + errmsg.ToString());
+                }
+
 
                 //Get Program Name (Long) if in DAB Mode
                 strNewDABLongName = "";
@@ -1434,15 +1500,17 @@ namespace DABFMMonkey
                         if (GetProgramName(intDABFMMode, intCurrentStation, DABNameMode.Long, strtextBuffer))
                         {
                             strNewDABLongName = strtextBuffer.Trim();
-                            WriteLog("Success - GetProgramName (Long): '" + strtextBuffer + "' Trimmed: '" + strNewDABLongName + "'");
+                            WriteDebug("Success - GetProgramName (Long): '" + strtextBuffer + "' Trimmed: '" + strNewDABLongName + "'");
                         }
-                        else WriteLog("Failed - GetProgramName (Long)");
+                        else WriteDebug("Failed - GetProgramName (Long)");
                     }
-                    else WriteLog("GetProgramName (Long) - Not ready or not DAB Mode");
+                    else WriteDebug("GetProgramName (Long) - Not ready or not DAB Mode");
                 }
-                catch { WriteLog("Exception Thrown Getting Data"); }
-
-
+                catch (Exception errmsg)
+                {
+                    WriteLog("Failed to GetProgramName (long), " + errmsg.ToString());
+                }
+                
                 //This is to allow commands to execute faster by returning now, and checking for a command
                 if (RadioCommand != MonkeyCommand.NONE) return;
 
@@ -1450,13 +1518,13 @@ namespace DABFMMonkey
                 //Get current stereo mode
                 try
                 {
-                    WriteLog("GetStereoMode() - start");
+                    WriteDebug("GetStereoMode() - start");
                     if (WaitForBoard())
                     {
                         Mode tmpSTEREOMODE = GetStereoMode();
-                        if (tmpSTEREOMODE == STEREOMODE) WriteLog("Mode validated, '" + tmpSTEREOMODE + "'"); else SetStereoMode(STEREOMODE);                         
+                        if (tmpSTEREOMODE == STEREOMODE) WriteDebug("Mode validated, '" + tmpSTEREOMODE + "'"); else SetStereoMode(STEREOMODE);                         
                     }
-                    WriteLog("STEREOMODE: '" + STEREOMODE.ToString() + "'");
+                    WriteDebug("STEREOMODE: '" + STEREOMODE.ToString() + "'");
 
                     //Update GUI to match mode
                     string strTemp = "";
@@ -1490,14 +1558,17 @@ namespace DABFMMonkey
 
                             break;
                     }
-                    WriteLog("GetStereoMode() - end");
+                    WriteDebug("GetStereoMode() - end");
                 }
-                catch { }
+                catch (Exception errmsg)
+                {
+                    WriteLog("Failed to get currnet StereoMode, " + errmsg.ToString());
+                }
 
                 //Signal Strenght
                 try
                 {
-                    WriteLog("GetSignalStrength() - start");
+                    WriteDebug("GetSignalStrength() - start");
 
                     if (init && WaitForBoard())
                     {
@@ -1507,17 +1578,20 @@ namespace DABFMMonkey
                         if (intSignal >= 0 && intSignal <= 100)
                         {
                             intSignalStrength = intSignal;
-                            WriteLog("Success - GetSignal: '" + intSignalStrength.ToString() + "'");
+                            WriteDebug("Success - GetSignal: '" + intSignalStrength.ToString() + "'");
                         }
                         else
                         {
                             intSignalStrength = -1;
-                            WriteLog("Failed - GetSignalStrength");
+                            WriteDebug("Failed - GetSignalStrength");
                         }
                     }
-                    else WriteLog("Failed - GetSignalStrength");
+                    else WriteDebug("Failed - GetSignalStrength");
                 }
-                catch { WriteLog("Exception Thrown - GetSignal Data"); }
+                catch (Exception errmsg)
+                {
+                    WriteLog("Exception Thrown - GetSignal Data, " + errmsg.ToString());
+                }
 
                 //This is to allow commands to execute faster by returning now, and checking for a command
                 if (RadioCommand != MonkeyCommand.NONE) return;
@@ -1526,7 +1600,7 @@ namespace DABFMMonkey
                 string strStereoLock = "";
                 try
                 {
-                    WriteLog("StereoMode() - start");
+                    WriteDebug("StereoMode() - start");
 
                     if (WaitForBoard())
                     {
@@ -1548,11 +1622,14 @@ namespace DABFMMonkey
                                 strStereoLock = "";
                                 break;
                         }
-                        WriteLog("Success - GetStereo(): '" + strStereoLock + "'");
-                        WriteLog("StereoMode() - end");
+                        WriteDebug("Success - GetStereo(): '" + strStereoLock + "'");
+                        WriteDebug("StereoMode() - end");
                     }
                 }
-                catch { WriteLog("Exception Thrown - StereoLock Data"); }
+                catch (Exception errmsg)
+                {
+                    WriteLog("Exception Thrown - StereoLock Data, " + errmsg.ToString());
+                }
 
                 //This is to allow commands to execute faster by returning now, and checking for a command
                 if (RadioCommand != MonkeyCommand.NONE) return;
@@ -1567,18 +1644,21 @@ namespace DABFMMonkey
                         if (intProgramType > 0 && intProgramType <= 31)
                         {
                             strProgramType = aryProgramType[intProgramType];
-                            WriteLog("Success - GetProgramType: '" + intProgramType.ToString() + "' Type: '" + aryProgramType[intProgramType] + "'");
+                            WriteDebug("Success - GetProgramType: '" + intProgramType.ToString() + "' Type: '" + aryProgramType[intProgramType] + "'");
                         }
                         else
                         {
-                            WriteLog("GetProgramClassification() - Unknown: '" + intProgramType.ToString() + "'");
+                            WriteDebug("GetProgramClassification() - Unknown: '" + intProgramType.ToString() + "'");
                             intProgramType = -1;
                             strProgramType = "";
                         }
                     }
-                    else WriteLog("Failed - GetProgramType");
+                    else WriteDebug("Failed - GetProgramType");
                 }
-                catch { WriteLog("Exception Thrown - ProgramClassification Data"); }
+                catch (Exception errmsg)
+                {
+                    WriteLog("Exception Thrown - ProgramClassification Data, " + errmsg.ToString());
+                }
 
                 //This is to allow commands to execute faster by returning now, and checking for a command
                 if (RadioCommand != MonkeyCommand.NONE) return;
@@ -1595,13 +1675,22 @@ namespace DABFMMonkey
                         if (GetProgramName(intDABFMMode, intCurrentStation, boolDABLongName, strtextBuffer))
                         {
                             strProgramName = strtextBuffer.Trim();
-                            WriteLog("Success - GetProgramName: '" + strtextBuffer + "' Trimmed: '" + strProgramName + "'");
+                            WriteDebug("Success - GetProgramName: '" + strtextBuffer + "' Trimmed: '" + strProgramName + "'");
                         }
-                        else WriteLog("Failed - GetProgramName");
+                        else
+                        {
+                            WriteDebug("Failed - GetProgramName");
+                        }
                     }
-                    else WriteLog("GetProgramName - Not ready");
+                    else
+                    {
+                        WriteDebug("GetProgramName - Not ready");
+                    }
                 }
-                catch { WriteLog("Exception Thrown Getting Data"); }
+                catch (Exception errmsg)
+                {
+                    WriteLog("Exception Thrown Getting Data, " +errmsg.ToString() );
+                }
 
                 //This is to allow commands to execute faster by returning now, and checking for a command
                 if (RadioCommand != MonkeyCommand.NONE) return;
@@ -1616,7 +1705,7 @@ namespace DABFMMonkey
                         // Check if new message has arrived. 'Duplicate' of OnMessage, but required as OnMessage can't access WriteLog() or ShowSLS() etc
                         if (aryMessage_Image != null)
                         {
-                            WriteLog("RadioVIS Command: '" + aryMessage_Image[0] + "' URI: '" + aryMessage_Image[1] + "' When: '" + aryMessage_Image[2] + "'");
+                            WriteDebug("RadioVIS Command: '" + aryMessage_Image[0] + "' URI: '" + aryMessage_Image[1] + "' When: '" + aryMessage_Image[2] + "'");
 
                             //No caching. As per spec, only show the image if 'show' and 'now' are set
                             if ((aryMessage_Image[0].ToLower() == "show".ToLower()) && (aryMessage_Image[2].ToLower() == "now".ToLower()))
@@ -1636,7 +1725,7 @@ namespace DABFMMonkey
                         // New text message
                         if (strMessage_Text != null)
                         {
-                            WriteLog("RadioVIS: Received text: '" + strMessage_Text + "'");
+                            WriteDebug("RadioVIS: Received text: '" + strMessage_Text + "'");
                             strRDSData = strMessage_Text;
                             strMessage_Text = null;
                         }
@@ -1655,27 +1744,30 @@ namespace DABFMMonkey
                             {
                                 case 0: // New RDS data. Cache it for future use
                                     strRDSData = strCachedProgramText = strtextBuffer.Trim();
-                                    WriteLog("RDSProgramText: '" + strtextBuffer + "' Trimmed: '" + strRDSData + "'");
+                                    WriteDebug("RDSProgramText: '" + strtextBuffer + "' Trimmed: '" + strRDSData + "'");
                                     break;
                                 case 1: // No new RDS data. Use cached data
                                     strRDSData = strCachedProgramText;
-                                    WriteLog("RDSProgramText - Cached data : '" + strRDSData + "'");
+                                    WriteDebug("RDSProgramText - Cached data : '" + strRDSData + "'");
                                     break;
                                 default:
                                     // Failed (-1)
                                     strRDSData = strCachedProgramText;
-                                    WriteLog("RDSProgramText Failed - Cached data: '" + strRDSData + "'");
+                                    WriteDebug("RDSProgramText Failed - Cached data: '" + strRDSData + "'");
                                     break;
                             }
                         }
                         else
                         {
-                            WriteLog("Not ready. Using cached data: '" + strRDSData + "'");
+                            WriteDebug("Not ready. Using cached data: '" + strRDSData + "'");
                             strRDSData = strCachedProgramText;
                         }
                     }
                 }
-                catch { WriteLog("Exception Thrown Getting Data"); }
+                catch (Exception errmsg)
+                {
+                    WriteLog("Exception Thrown Getting Data, " + errmsg.ToString());
+                }
 
                 //This is to allow commands to execute faster by returning now, and checking for a command
                 if (RadioCommand != MonkeyCommand.NONE) return;
@@ -1724,9 +1816,12 @@ namespace DABFMMonkey
                             {
                                 base.CF_updateButtonText("DABFM", base.pluginLang.ReadField("/APPLANG/SETUP/DAB"));
                             }
-                            WriteLog("EnsembleName: '" + strEnsembleName + "'");
+                            WriteDebug("EnsembleName: '" + strEnsembleName + "'");
                         }
-                        catch { WriteLog("Exception Thrown - GetEnsembleName RDS Data"); }
+                        catch (Exception errmsg)
+                        {
+                            WriteLog("Exception Thrown - GetEnsembleName RDS Data, " + errmsg.ToString());
+                        }
 
                         //GetApplicationType
                         ApplicationType AppType = ApplicationType.Unknown;
@@ -1734,46 +1829,52 @@ namespace DABFMMonkey
                         {
                             if ((intCurrentStation != 999) && WaitForBoard()) AppType = GetApplicationType(intCurrentStation);
                         }
-                        catch { }
-                        WriteLog("MOT: GetApplicationType: '" + AppType.ToString() + "'");
+                        catch (Exception errmsg)
+                        {
+                            WriteLog("Failed to set AppType, " + errmsg.ToString());
+                        }
+                        WriteDebug("MOT: GetApplicationType: '" + AppType.ToString() + "'");
 
                         //Get MotData if RadioVIS is not enabled
                         if ((AppType == ApplicationType.SlideShow) && !(boolRadioVISConfigured))
                         {
-                            WriteLog("MOT: SlideShow Channel");
+                            WriteDebug("MOT: SlideShow Channel");
 
                             //SLS mode. Any pictures?
                             if (MotQuery())
                             {
-                                WriteLog("SLS and MotQuery=True.");
+                                WriteDebug("SLS and MotQuery=True.");
                                 string strtextBuffer = new string(' ', constBufferSize); // Read buffer                               
                                 GetImage(strtextBuffer);
 
                                 string strImageFilename = CFTools.StartupPath + "\\" + strtextBuffer.Trim();
-                                WriteLog("MOT: strImageFilename: '" + strImageFilename + "'");
+                                WriteDebug("MOT: strImageFilename: '" + strImageFilename + "'");
 
                                 ShowSLS(strImageFilename);
                             }
-                            else WriteLog("MOT: Nothing assembled yet.");
+                            else WriteDebug("MOT: Nothing assembled yet.");
                         }
-                        else WriteLog("MOT: Not SlideShow Channel or RadioVIS enabled");
+                        else WriteDebug("MOT: Not SlideShow Channel or RadioVIS enabled");
 
                         //Get DataRate
                         int intDataRate = -1;
                         try
                         {
-                            WriteLog("DataRate() - start");
+                            WriteDebug("DataRate() - start");
 
                             if (WaitForBoard())
                             {
                                 intDataRate = GetDataRate();
-                                WriteLog("Success - DataRate: '" + intDataRate.ToString() + "'");
+                                WriteDebug("Success - DataRate: '" + intDataRate.ToString() + "'");
                             }
-                            else WriteLog("Failed - DataRate");
+                            else WriteDebug("Failed - DataRate");
 
-                            WriteLog("DataRate() - end");
+                            WriteDebug("DataRate() - end");
                         }
-                        catch { WriteLog("Exception Thrown - DataRate"); }
+                        catch (Exception errmsg)
+                        {
+                            WriteLog("Exception Thrown - DataRate, " + errmsg.ToString());
+                        }
 
                         //Deprecated function
                         sbyte sbyteSignalQuality = -1;
@@ -1781,8 +1882,11 @@ namespace DABFMMonkey
                         {
                             if (WaitForBoard()) sbyteSignalQuality = GetDABSignalQuality();
                         }
-                        catch { WriteLog("Exception Thrown - GetSignalQuality Data"); }
-                        WriteLog("SignalQuality: '" + sbyteSignalQuality.ToString() + "'");
+                        catch (Exception errmsg)
+                        {
+                            WriteLog("Exception Thrown - GetSignalQuality Data, " + errmsg.ToString() );
+                        }
+                        WriteDebug("SignalQuality: '" + sbyteSignalQuality.ToString() + "'");
 
                         // Minimal GUI?
                         if (!boolDABMinimal)
@@ -1819,10 +1923,13 @@ namespace DABFMMonkey
                                 try
                                 {
                                     iFreq = Math.Round((decimal)intCurrentStation / 1000, 2);
-                                    WriteLog("iFreq " + iFreq.ToString());
+                                    WriteDebug("iFreq " + iFreq.ToString());
                                     temp_stationText = "[" + iFreq.ToString("00.00") + "MHz";
                                 }
-                                catch { }
+                                catch (Exception errmsg)
+                                {
+                                    WriteLog("Failed to convert iFreq data, " + errmsg.ToString());
+                                }
                             }
                             else
                                 temp_stationText = "[";
@@ -1837,15 +1944,17 @@ namespace DABFMMonkey
                         if (strProgramType != "") temp_stationText = temp_stationText + " / " + strProgramType;
                     }
                 }
-                catch { WriteLog("Exception Thrown Getting RDS Data"); }
-
+                catch (Exception errmsg)
+                {
+                    WriteLog("Exception Thrown Getting RDS Data, " + errmsg.ToString());
+                }
 
                 //Set new text and information if changed
                 if (_stationText != temp_stationText) _stationText = temp_stationText;                
                 if (_stationName != strRDSData) _stationName = strRDSData;
 
-                WriteLog("_stationText : '" + _stationText + "'");
-                WriteLog("_stationName : '" + _stationName + "'");
+                WriteDebug("_stationText : '" + _stationText + "'");
+                WriteDebug("_stationName : '" + _stationName + "'");
                 //WriteLog("Autostart audio :" + CF_ConfigFlags.StartupAudio.ToString());
             }
             else 
@@ -1854,7 +1963,7 @@ namespace DABFMMonkey
                 System.Threading.Thread.Sleep(1000);
             }
 
-            WriteLog("End IOCommsSub()");
+            WriteDebug("End IOCommsSub()");
         }
     }
 }

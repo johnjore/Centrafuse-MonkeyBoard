@@ -1,5 +1,5 @@
 /*
- * Copyright 2012, 2013, John Jore
+ * Copyright 2012, 2013, 2014, John Jore
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -19,6 +19,18 @@
  * This is the main CS file
  */
 
+/*
+ * Future:
+ *      add recording?
+ *
+
+Fix long press (Move to CML in skin file)
+Move to use a FIFO buffer for RadioCommands
+Mute/ATT and unmute/UnATT
+next/prev hotkey = same as media player
+
+*/
+
 using centrafuse.Plugins;
 using System;
 using System.Windows.Forms;
@@ -31,12 +43,6 @@ using System.Linq;
 using CFControlsExtender.Base;      //Advanced ListView
 using CFControlsExtender.Listview;  //Advanced ListView
 using System.Reflection;            //Extra debug information
-
-/*using System.Collections;
-using Microsoft.Win32;
-using System.Drawing;
-using System.Xml.Serialization;
-using System.Collections.Generic;*/
 
 namespace DABFMMonkey
 {
@@ -51,9 +57,9 @@ namespace DABFMMonkey
 #region Variables
 		private const string PluginName = "DABFMMonkey";
 		private const string PluginPath = @"\plugins\" + PluginName + @"\";
-		private const string PluginPathSkins = PluginPath + @"Skins\";
-		private const string PluginPathLanguages = PluginPath + @"Languages\";
-		private const string PluginPathIcons = PluginPath + @"Icons\";
+        private const string PluginPathLanguages = PluginPath + @"Languages\";
+		//private const string PluginPathSkins = PluginPath + @"Skins\";
+		//private const string PluginPathIcons = PluginPath + @"Icons\";
 		private const string ConfigurationFile = "config.xml";
         private const string FavoritesFile = "favorites.xml";
         private const string BlackListedFile = "blacklisted.xml";
@@ -81,10 +87,8 @@ namespace DABFMMonkey
         private int intVolumeTimerButton = 0;
         private Volume DABVolumeDirection;
 
-        //Buffer and input device (LineIn)
-        private static bool _isBufferRadio = true;
-        private static string _dabRadioLineDev =  "";
-        private static string _dabRadioLine = "";
+        //Buffer vs input device (LineIn)
+        private static bool _isBufferRadio = false;
 
         //Used for Tune / Select font and size
         string strFontClass;
@@ -109,7 +113,7 @@ namespace DABFMMonkey
 		/// Initializes the plugin.  This is called from the main application
 		/// when the plugin is first loaded.
 		/// </summary>
-		public override void CF_pluginInit()
+        public override void CF_pluginInit()
 		{
 			try
 			{
@@ -135,11 +139,17 @@ namespace DABFMMonkey
                     {
                         File.Delete(ConfigFileName);
                     }
-                    catch { }
+                    catch (Exception errmsg)
+                    {
+                        CFTools.writeError("Failed to investigate configuration file, " + errmsg.ToString());
+                    }
                 }
 
                 // CF3_initPlugin() Will configure pluginConfig and pluginLang automatically. All plugins must call this method once
                 this.CF3_initPlugin("DABFMMonkey", true);
+
+                //Clear old values from log file
+                CFTools.writeModuleLog("startup", LogFilePath);
 
                 //Log current version of DLL for debug purposes
                 WriteLog("Assembly Version: '" + Assembly.GetExecutingAssembly().GetName().Version.ToString() + "'");
@@ -174,8 +184,10 @@ namespace DABFMMonkey
 
                     WriteLog("ADVLst_pluginInit - end");
                 }
-                catch (Exception errmsg) { CFTools.writeError(errmsg.ToString()); }
-
+                catch (Exception errmsg)
+                {
+                    WriteLog("Failed to Initialize AdvancedList, " + errmsg.ToString());
+                }
 
                 // All controls should be created or Setup in CF_localskinsetup. 
                 // This method is also called when the resolution or skin has changed.
@@ -187,12 +199,15 @@ namespace DABFMMonkey
                 //Get settings from XML files
                 LoadSettings();
                 
-                // add event handlers for keyboard and power mode change
-				this.KeyDown += new KeyEventHandler(DABFMMonkey_KeyDown);
-                this.CF_events.CFPowerModeChanged += new CFPowerModeChangedEventHandler(OnPowerModeChanged); //Hibernation support
+                // add event handlers
+                this.CF_events.CFPowerModeChanged += new CFPowerModeChangedEventHandler(OnPowerModeChanged); //Hibernation support              
+                this.CF_events.pluginEvent += new CFPluginEventHandler(CF_events_pluginEvent);                
 			}
-			catch(Exception errmsg) { CFTools.writeError(errmsg.ToString()); }
-
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to Initialize Plugin, " + errmsg.ToString());
+            }
+            
             WriteLog("CF_pluginInit() - end");
 		}
     
@@ -204,6 +219,8 @@ namespace DABFMMonkey
             this.CF_params.Media.bufferOn = _isBufferRadio; // Buffer usage is based on users settings                
             this.CF_params.Media.visibleOnly = false;       // Audio can continue to play, even if plugin is not visible
             this.CF_params.supportsRearScreen = false;      // No rear screen support
+            //this.CF_params.Media.useCorePlaybackControl = true;   // Default is true
+            //this.CF_params.hasBasicSettings = true;               // ?
 
             //Init the board
             if (!init) init = InitializeRadio();
@@ -326,7 +343,10 @@ namespace DABFMMonkey
 
                 base.CF_pluginShow(); // sets form Visible property
             }
-            catch { }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to StartAudio() and pluginShow(), " + errmsg.ToString());
+            }
 
             WriteLog("CF_pluginShow() - end");
 		}
@@ -368,8 +388,11 @@ namespace DABFMMonkey
                 setup.Close();
                 setup = null;
 			}
-			catch(Exception errmsg) { CFTools.writeError(errmsg.ToString()); }
-            
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle CF_pluginShowSetup(), " + errmsg.ToString());
+            }
+                        
             WriteLog("CF_pluginShowSetup - end");
 			return returnvalue;
 		}
@@ -526,7 +549,10 @@ namespace DABFMMonkey
                         break;
                 }
             }
-            catch { }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle CF_pluginCommand(), " + errmsg.ToString());
+            }
 		}
 
         public void PlayIndex(int favIndex)
@@ -570,6 +596,7 @@ namespace DABFMMonkey
             //WriteLog("CF_pluginData: " + retvalue);
             return retvalue;
 		}
+
 
         /// <summary>
         /// Called on control clicks, down events, etc, if the control has a defined CML action parameter in the skin xml.
@@ -710,15 +737,7 @@ namespace DABFMMonkey
                             return true;
                         }
                         else return false;
-                    
-                    //Not handled as used as there is no need to overwrite CF's native handling
-                    /*case "CENTRAFUSE.MAIN.PLAYPAUSE":
-                        if (boolEnableAudio)
-                        {
-                            return false;
-                        }
-                        else return false;
-                    */
+
                     case "TUNESELECT":
                         if (state == CF_ButtonState.Click) TuneClick();
                         return true;
@@ -805,7 +824,11 @@ namespace DABFMMonkey
                         return true;
                 }
             }
-            catch (Exception ex) { CFTools.writeError(ex.ToString()); }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle CF_pluginCMLCommand(), " + errmsg.ToString());
+            }
+            
             return false;
         }
         
@@ -829,13 +852,15 @@ namespace DABFMMonkey
 
                     case CF_CMLTextItems.MediaStation: // 7
                         return this._stationName;
+
                 }
                 return "";
             }
-            catch (Exception exception)
+            catch (Exception errmsg)
             {
-                CFTools.writeError(exception.Message, exception.StackTrace);
+                WriteLog("Failed to handle CF_pluginCMLData(), " + errmsg.ToString());
             }
+
             return "Return String";
         }
 
@@ -859,22 +884,36 @@ namespace DABFMMonkey
                 if (init && boolEnableAudio)
                 {
                     //Play using settings from config file                   
-                    try { intNewDABFMMode = (RADIO_TUNE_BAND)Enum.Parse(typeof(RADIO_TUNE_BAND), this.pluginConfig.ReadField("/APPCONFIG/ACTIVEBAND"), true); }
-                    catch { }
+                    try
+                    { 
+                        intNewDABFMMode = (RADIO_TUNE_BAND)Enum.Parse(typeof(RADIO_TUNE_BAND), this.pluginConfig.ReadField("/APPCONFIG/ACTIVEBAND"), true); 
+                    }
+                    catch (Exception errmsg)
+                    {
+                        WriteLog("Failed to set 'intNewDABFMMode, " + errmsg.ToString());
+                    }
+
                     WriteLog("XML ACTIVEBAND: '" + intNewDABFMMode.ToString() + "'");
 
                     try { 
                         intLASTDAB = UInt32.Parse(this.pluginConfig.ReadField("/APPCONFIG/LASTDAB"));
                         intLASTDAB = fixFreq(RADIO_TUNE_BAND.DAB_BAND, intLASTDAB);
                     }
-                    catch { }
+                    catch (Exception errmsg)
+                    {
+                        WriteLog("Failed to set intLASTDAB, " + errmsg.ToString());
+                    }
+
                     WriteLog("XML LASTDAB: '" + intLASTDAB.ToString() + "'");
 
                     try { 
                         intLASTFM = UInt32.Parse(this.pluginConfig.ReadField("/APPCONFIG/LASTFM"));
                         intLASTFM = fixFreq(RADIO_TUNE_BAND.FM_BAND, intLASTFM);
                     }
-                    catch { }
+                    catch (Exception errmsg)
+                    {
+                        WriteLog("Failed to set intLASTFM, " + errmsg.ToString());
+                    }
                     WriteLog("XML LASTFM: '" + intLASTFM.ToString() + "'");
 
                     WriteLog("intTotalProgram: " + intTotalProgram.ToString());
@@ -892,59 +931,32 @@ namespace DABFMMonkey
                     }
                     else DABRadioChannel = intLASTFM;                
                     WriteLog("XML ACTIVE FREQ/CH: '" + DABRadioChannel.ToString() + "'");
-                   
-                    try
-                    {
-                        CF_params.Media.playbackDevice = pluginConfig.ReadField("/APPCONFIG/PLAYBACK").Split(new char[] { '|' })[0];
-                        CF_params.Media.playbackLine = pluginConfig.ReadField("/APPCONFIG/PLAYBACK").Split(new char[] { '|' })[1];
-                    }
-                    catch
-                    {
-                        pluginConfig.WriteField("/APPCONFIG/PLAYBACK", "-1|-1", true);
-                        CF_params.Media.playbackDevice = "";
-                        CF_params.Media.playbackLine = "";                        
-                    }
-
-                    try
-                    {
-                        CF_params.Media.recordDevice = pluginConfig.ReadField("/APPCONFIG/LINEIN").Split(new char[] { '|' })[0];
-                        CF_params.Media.recordLine = pluginConfig.ReadField("/APPCONFIG/LINEIN").Split(new char[] { '|' })[1];
-                    }
-                    catch
-                    {
-                        base.pluginConfig.WriteField("/APPCONFIG/LINEIN", "-1|-1", true);
-                        _dabRadioLineDev = "";
-                        _dabRadioLine = "";
-                    }
-
-
-                    if (!_isBufferRadio)
-                    {
-                        _dabRadioLineDev = CF_params.Media.playbackDevice;
-                        _dabRadioLine = CF_params.Media.playbackLine;
-                    }
-                    else
-                    {
-                        _dabRadioLineDev = CF_params.Media.recordDevice;
-                        _dabRadioLine = CF_params.Media.recordLine;
-                    }
-
 
                     //Buffer or line?
                     WriteLog("Audio Buffer Enabled: '" + _isBufferRadio.ToString() + "'");
+                    CF_params.Media.bufferOn = _isBufferRadio;
                     if (_isBufferRadio)
                     {
-                        CF_updateBufferStatus(CF_params.pluginName, _isBufferRadio);
-                        CF_setMixerMute(_dabRadioLineDev, _dabRadioLineDev, false, true);
-                        CF_initRecord(_dabRadioLineDev, _dabRadioLine);
+                        try
+                        {
+                            CF_params.Media.recordDevice = pluginConfig.ReadField("/APPCONFIG/PLAYBACK");
+                            CF_params.Media.recordLine = pluginConfig.ReadField("/APPCONFIG/LINEIN");
+                        }
+                        catch
+                        {
+                            pluginConfig.WriteField("/APPCONFIG/PLAYBACK", "", true);
+                            pluginConfig.WriteField("/APPCONFIG/LINEIN", "", true);
+                            CF_params.Media.recordDevice = "";
+                            CF_params.Media.recordLine = "";
+                        }
+                  
                         CF_clearRecordBuffer(true);
+                        CF_updateBufferStatus(CF_params.pluginName, _isBufferRadio);                       
                     }
-                    else
-                    {
-                        CF_clearRecordBuffer(false);
-                        CF_setMixerMute(_dabRadioLineDev, _dabRadioLine, false, true);
-                        CF_updateBufferStatus(CF_params.pluginName, _isBufferRadio);
-                    }
+
+                    WriteLog("CF_params.Media.recordDevice : " + CF_params.Media.recordDevice);
+                    WriteLog("CF_params.Media.recordLine   : " + CF_params.Media.recordLine);
+                    
 
                     //Start playing
                     WriteLog("Start Playing: '" + intNewDABFMMode.ToString() + "' '" + DABRadioChannel.ToString() + "'");
@@ -978,7 +990,10 @@ namespace DABFMMonkey
                     result = true;
                 }
             }
-            catch { }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to handle StartAudio(), " + errmsg.ToString());
+            }
 
             this.WriteLog("StartAudio() - end");
             return result;
@@ -1172,9 +1187,11 @@ namespace DABFMMonkey
                 }
                 catch { }                
                 foreach (string s in aryECCRegion) WriteLog("XML ECC Regions: '" + s + "'");
-
             }
-            catch { }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to read config settings, " + errmsg.ToString());
+            }
 
             // If XML exists with values, then use them, else default (hardcoded) values will be used
             try
@@ -1408,7 +1425,10 @@ namespace DABFMMonkey
                 WriteLog("XML Real DAB End Scan '" + DABFMMonkeyScanEndIndex.ToString() + "' '" + endDAB + "'");
 
             }
-            catch { WriteLog("No, or corrupt, XML Configuration file"); }
+            catch (Exception errmsg)
+            {
+                WriteLog("No, or corrupt, XML Configuration file, " + errmsg.ToString());
+            }
             #endregion
             
             // Get the favorites
@@ -1474,6 +1494,18 @@ namespace DABFMMonkey
             catch { }
         }
 
+        private void WriteDebug(string msg)
+        {            
+            try
+            {
+                if (Boolean.Parse(this.pluginConfig.ReadField("/APPCONFIG/DEBUGEVENTS")))
+                {
+                    CFTools.writeModuleLog((new StackTrace(true)).GetFrame(1).GetMethod().Name + ": " + msg, LogFilePath);
+                }
+            }
+            catch { }
+        }
+
 #endregion
 
 #region CF events
@@ -1483,8 +1515,6 @@ namespace DABFMMonkey
         {
             WriteLog("OnPowerModeChanged - start()");
             WriteLog("OnPowerModeChanged '" + e.Mode.ToString() + "'");
-
-            CFTools.writeLog(PluginName, "OnPowerModeChanged", e.Mode.ToString());
            
             //If suspending
             if (e.Mode == CFPowerModes.Suspend)
@@ -1516,39 +1546,66 @@ namespace DABFMMonkey
             return;
         }
 
-        // If the plugin uses back/forward buttons, we need to catch the left/right keyboard commands too...
-		private void DABFMMonkey_KeyDown(object sender, KeyEventArgs e)
-		{
-			e.Handled = true;
-		}
-
-#endregion
-
-#region AdvancedListView
-
-        private void OnLinkedItemClick(object sender, LinkedItemArgs e)
+        //Process the event
+        private void CF_events_pluginEvent(object sender, CFPluginEventArgs e)
         {
-            WriteLog("OnLinkedItemClick - Start");
+            WriteLog("pluginEvent from " + sender + ", EventArgs = " + e.EventArgs.ToString() + ", EventName = " + e.EventName + ", Plugin = " + e.Plugin);
 
-            // You could have other linked actions, and can test for which on it is by checking the LinkId property
-            if (e.LinkId == "Delete")
+            switch (e.EventArgs.ToUpper())
             {
-                int nSelected = e.ItemId;
-                if (nSelected < 0) return;
-                DeleteClick(nSelected);
-            }
-            else if (e.LinkId == "Blacklist")
-            {
-                int nSelected = e.ItemId;
-                if (nSelected < 0) return;
-                BlacklistClick(nSelected);
-            }
-            WriteLog("OnLinkedItemClick - end");
-        }
+                case "ATT":
+                    //Convert 0-100 to 0-(CurrentValue)
+                    //(int.Parse(DABFMMonkeyVolume) * int.Parse(CF_getConfigSetting(CF_ConfigSettings.AttMuteLevel)) / 100);
 
+                    //Calculate new volume level
+                    DABFMMonkeyATTVolume= (Volume)Math.Round((double.Parse(Convert.ChangeType(DABFMMonkeyVolume, DABFMMonkeyVolume.GetTypeCode()).ToString()) * double.Parse(CF_getConfigSetting(CF_ConfigSettings.AttMuteLevel)) / 100), MidpointRounding.AwayFromZero);
+
+                    WriteLog("ATT - Old volume : '" + DABFMMonkeyVolume.ToString() + "', New ATT volume: '" + DABFMMonkeyATTVolume.ToString() + "'");
+
+                    //Set new volume level
+                    RadioCommand = MonkeyCommand.SETATTVOLUME;                      
+                    break;
+
+                case "MUTE":
+                    if (CF_getConfigFlag(CF_ConfigFlags.GPSAttMute) || CF_getConfigFlag(CF_ConfigFlags.AttMute))
+                    {
+                        //Convert 0-100 to 0-(CurrentValue)
+                        //Calculate new volume level
+                        DABFMMonkeyATTVolume = (Volume)Math.Round((double.Parse(Convert.ChangeType(DABFMMonkeyVolume, DABFMMonkeyVolume.GetTypeCode()).ToString()) * double.Parse(CF_getConfigSetting(CF_ConfigSettings.AttMuteLevel)) / 100), MidpointRounding.AwayFromZero);
+
+                        WriteLog("MUTE/ATT - Old volume : '" + DABFMMonkeyVolume.ToString() + "', New ATT volume: '" + DABFMMonkeyATTVolume.ToString() + "'");
+
+                        //Set new volume level
+                        RadioCommand = MonkeyCommand.SETATTVOLUME;
+                    }
+                    else
+                    {
+                        //Save existing volume level
+                        DABFMMonkeyATTVolume = Volume.Min;
+
+                        WriteLog("MUTE/MUTE - Old volume : '" + DABFMMonkeyVolume.ToString() + "', New Mute volume: '" + DABFMMonkeyATTVolume.ToString() + "'");
+
+                        //Set new volume level
+                        RadioCommand = MonkeyCommand.SETATTVOLUME;
+                    }
+                    break;
+
+                case "DISABLEATT":
+                case "UNMUTE":
+                    //Reset volume level
+                    WriteLog("DISABLEATT / UNMUTE - Old volume : '" + DABFMMonkeyVolume.ToString() + "'");
+
+                    //Set new volume level
+                    RadioCommand = MonkeyCommand.SETVOLUME;                      
+                    break;
+
+                default:
+                    WriteLog("Unknown Audio event");
+                    break;
+            }
+        }        
 
 #endregion
-
     }
 }
 

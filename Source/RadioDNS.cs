@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2012, 2013, John Jore
+ * Copyright 2012, 2013, 2014 John Jore
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -27,8 +27,7 @@ namespace DABFMMonkey
     using System.Net;
 
     using Apache.NMS; //STOMP
-    //using Apache.NMS.Util; //STOMP 
-    
+        
     public partial class DABFMMonkey
     {
 #region Variables
@@ -55,30 +54,37 @@ namespace DABFMMonkey
             string strCNAME = "";
             string strGCC = "";
 
-            if (!boolRadioVISConfigured)
+            try
             {
-                // If we have a CNAME record
-                if (RadioDNS(intDABIndex, out strCNAME, out strGCC))
+                if (!boolRadioVISConfigured)
                 {
-                    // Locate SRV
-                    string strSTOMPLocation = "";
-
-                    // RadioVIS
-                    boolRadioVIS = GetSRV(RadioDNSSRV.VIS, strCNAME, out strSTOMPLocation);
-                    if (boolRadioVIS)
+                    // If we have a CNAME record
+                    if (RadioDNS(intDABIndex, out strCNAME, out strGCC))
                     {
-                        SubscribeVIS(strSTOMPLocation, strGCC, intDABIndex); 
-                        boolRadioVISConfigured = true;
-                        result = true;
+                        // Locate SRV
+                        string strSTOMPLocation = "";
+
+                        // RadioVIS
+                        boolRadioVIS = GetSRV(RadioDNSSRV.VIS, strCNAME, out strSTOMPLocation);
+                        if (boolRadioVIS)
+                        {
+                            SubscribeVIS(strSTOMPLocation, strGCC, intDABIndex);
+                            boolRadioVISConfigured = true;
+                            result = true;
+                        }
+                        else WriteLog("RadioVIS: No SRV record found for '" + strCNAME + "'");
                     }
-                    else WriteLog("RadioVIS: No SRV record found for '" + strCNAME + "'");
+                    else WriteLog("No CNAME found in RadioDNS");
                 }
-                else WriteLog("No CNAME found in RadioDNS");
+                else
+                {
+                    CloseRadioVIS();
+                    RadioVIS(intDABIndex);
+                }
             }
-            else
+            catch (Exception errmsg)
             {
-                CloseRadioVIS();
-                RadioVIS(intDABIndex);
+                WriteLog("Failed to initialize and enable RadioVIS, " + errmsg.ToString());
             }
 
             return result;
@@ -92,32 +98,40 @@ namespace DABFMMonkey
             string strCNAME = "";
             string strGCC = "";
 
-            if (!boolRadioVISConfigured)
+            try
             {
-                // If we have a CNAME record
-                if (RadioDNS(intDABIndex, out strCNAME, out strGCC))
+                if (!boolRadioVISConfigured)
                 {
-                    // Locate SRV
-                    string strSTOMPLocation = "";
-
-                    // RadioEPG
-                    boolRadioEPG = GetSRV(RadioDNSSRV.EPG, strCNAME, out strSTOMPLocation);
-                    if (boolRadioEPG) 
+                    // If we have a CNAME record
+                    if (RadioDNS(intDABIndex, out strCNAME, out strGCC))
                     {
-                        SubscribeEPG(strSTOMPLocation, strGCC, intDABIndex);
-                        boolRadioVISConfigured = true;
-                        result = true;
-                    }
-                    else WriteLog("RadioEPG: No SRV record found for '" + strCNAME + "'");
-                }
-                else WriteLog("No CNAME found in RadioDNS");
-            }
-            else
-            {
-                CloseRadioEPG();
+                        // Locate SRV
+                        string strSTOMPLocation = "";
 
-                RadioEPG(intDABIndex);
+                        // RadioEPG
+                        boolRadioEPG = GetSRV(RadioDNSSRV.EPG, strCNAME, out strSTOMPLocation);
+                        if (boolRadioEPG)
+                        {
+                            SubscribeEPG(strSTOMPLocation, strGCC, intDABIndex);
+                            boolRadioVISConfigured = true;
+                            result = true;
+                        }
+                        else WriteLog("RadioEPG: No SRV record found for '" + strCNAME + "'");
+                    }
+                    else WriteLog("No CNAME found in RadioDNS");
+                }
+                else
+                {
+                    CloseRadioEPG();
+
+                    RadioEPG(intDABIndex);
+                }
             }
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to initialize and enable RadioEPG, " + errmsg.ToString());
+            }
+
 
             return result;
         }
@@ -129,19 +143,27 @@ namespace DABFMMonkey
             string strCNAME = "";
             strGCC = "";
 
-            //Find the CNAME for the radio station, try each ECC value
-            foreach (string strECC in aryECCRegion)
+            try
             {
-                strGCC = _ProgramInfoList[(Int32)intDABIndex].gcc + strECC;
-                string strRadioDNS = _ProgramInfoList[(Int32)intDABIndex].scids + "." + _ProgramInfoList[(Int32)intDABIndex].sid + "." + _ProgramInfoList[(Int32)intDABIndex].eid + "." + strGCC + "." + _ProgramInfoList[(Int32)intDABIndex].type + qdn;
-                WriteLog("Get CNAME for: '" + strRadioDNS + "'");
+                //Find the CNAME for the radio station, try each ECC value
+                foreach (string strECC in aryECCRegion)
+                {
+                    strGCC = _ProgramInfoList[(Int32)intDABIndex].gcc + strECC;
+                    string strRadioDNS = _ProgramInfoList[(Int32)intDABIndex].scids + "." + _ProgramInfoList[(Int32)intDABIndex].sid + "." + _ProgramInfoList[(Int32)intDABIndex].eid + "." + strGCC + "." + _ProgramInfoList[(Int32)intDABIndex].type + qdn;
+                    WriteLog("Get CNAME for: '" + strRadioDNS + "'");
 
-                if (GetCNAME(strRadioDNS, out strCNAME)) break;
+                    if (GetCNAME(strRadioDNS, out strCNAME)) break;
+                }
+
+                CNAME = strCNAME;
+                WriteLog("CNAME is: '" + CNAME + "'");
             }
-
-            CNAME = strCNAME;
-            WriteLog("CNAME is: '" + CNAME + "'");            
-
+            catch (Exception errmsg)
+            {
+                CNAME = "";
+                WriteLog("Failed to configure RadioDNs for the current DAB station, " + errmsg.ToString());
+            }
+            
             if (CNAME.Length > 0) return true; else return false;
         }
 
@@ -157,7 +179,10 @@ namespace DABFMMonkey
                 aryMessage_Image = message_image.Text.Split(' ');
                 aryMessage_Image[2] = aryMessage_Image[2].ToString().TrimEnd('\r', '\n'); //clean up
             }
-            catch { aryMessage_Image = null; }
+            catch
+            {
+                aryMessage_Image = null;
+            }
         }
 
         // Triggered when new Text message arrives
@@ -174,7 +199,10 @@ namespace DABFMMonkey
                 strMessage_Text = message_text.Text.TrimEnd('\r', '\n'); //remove special characters from end of the message
                 strMessage_Text = strMessage_Text.Substring(5); //Remove the 'TEXT' command from message
             }
-            catch { strMessage_Text = ""; }
+            catch
+            {
+                strMessage_Text = "";
+            }
         }
 
         // returns true if found a valid CNAME, returnes CNAME
@@ -184,15 +212,22 @@ namespace DABFMMonkey
             bool result = false;
             strCNAME = "";
 
-            string[] s = nDnsQuery.GetCNAMERecords(strFQDN);
-            if (s.Length > 0)
+            try
             {
-                // Select CNAME
-                strCNAME = s[random.Next(0, s.Length)];
-                WriteLog("Using: '" + strCNAME + "'");               
-                result = true;                
+                string[] s = nDnsQuery.GetCNAMERecords(strFQDN);
+                if (s.Length > 0)
+                {
+                    // Select CNAME
+                    strCNAME = s[random.Next(0, s.Length)];
+                    WriteLog("Using: '" + strCNAME + "'");
+                    result = true;
+                }
             }
-
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to GetCNAME, " + errmsg.ToString());
+            }
+            
             return result;
         }
 
@@ -204,29 +239,36 @@ namespace DABFMMonkey
             string strSRVLocation = "";
             strSTOMPLocation = "";
 
-            switch (srv)
+            try
             {
-                case RadioDNSSRV.VIS:
-                    strSRVLocation = "_" + strSRVRadioVISRecordSTOMP + "._tcp." + strCNAME;
-                    break;
-                case RadioDNSSRV.EPG:
-                    strSRVLocation = "_" + strSRVRadioEPGRecordSTOMP + "._tcp." + strCNAME;
-                    break;
+                switch (srv)
+                {
+                    case RadioDNSSRV.VIS:
+                        strSRVLocation = "_" + strSRVRadioVISRecordSTOMP + "._tcp." + strCNAME;
+                        break;
+                    case RadioDNSSRV.EPG:
+                        strSRVLocation = "_" + strSRVRadioEPGRecordSTOMP + "._tcp." + strCNAME;
+                        break;
+                }
+
+                //Is the service record there?
+                WriteLog("Looking for: " + strSRVLocation);
+                string[] s = nDnsQuery.GetSRVRecords(strSRVLocation);
+
+                //Found a server
+                if (s.Length > 0)
+                {
+                    //Change from hardcoded first instance to random of total returned
+                    strSTOMPLocation = s[random.Next(0, s.Length)];
+                    WriteLog("Server:Port '" + strSTOMPLocation + "'");
+                    result = true;
+                }
             }
-
-            //Is the service record there?
-            WriteLog("Looking for: " + strSRVLocation);
-            string[] s = nDnsQuery.GetSRVRecords(strSRVLocation);
-
-            //Found a server
-            if (s.Length > 0)
+            catch (Exception errmsg)
             {
-                //Change from hardcoded first instance to random of total returned
-                strSTOMPLocation = s[random.Next(0, s.Length)];
-                WriteLog("Server:Port '" + strSTOMPLocation + "'");
-                result = true;
+                WriteLog("Failed to GetSRV, " + errmsg.ToString());
             }
-
+            
             return result;
         }
 
@@ -257,8 +299,10 @@ namespace DABFMMonkey
 
                 result_image = true;
             }
-            catch { WriteLog("Exception during Image connection"); }
-
+            catch (Exception errmsg)
+            {
+                WriteLog("Exception during Image connection, " + errmsg.ToString());
+            }
 
             //Text
             try
@@ -276,7 +320,10 @@ namespace DABFMMonkey
 
                 result_text = true;
             }
-            catch { WriteLog("Exception during connection"); }
+            catch (Exception errmsg) 
+            {
+                WriteLog("Exception during connection, " + errmsg.ToString());
+            }
 
             // Return
             if (result_image || result_text) return true; else return false;
@@ -285,14 +332,21 @@ namespace DABFMMonkey
         //Unsubscribe and close VIS connection
         private bool CloseRadioVIS()
         {
-            if (boolRadioVISConfigured )
+            try
             {
-                WriteLog("Close RadioVIS session and connection");
-                session.Close();
-                connection.Close();
-                boolRadioVISConfigured = false; //Not configured
+                if (boolRadioVISConfigured)
+                {
+                    WriteLog("Close RadioVIS session and connection");
+                    session.Close();
+                    connection.Close();
+                    boolRadioVISConfigured = false; //Not configured
+                }
+                else WriteLog("Close RadioVIS - Nothing to do");
             }
-            else WriteLog("Close RadioVIS - Nothing to do");
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to CloseRadioVIS, " + errmsg.ToString());
+            }
 
             return true;
         }
@@ -300,13 +354,20 @@ namespace DABFMMonkey
         //Unsubscribe and close EPG connection
         private bool CloseRadioEPG()
         {
-            if (boolRadioEPGConfigured)
+            try
             {
-                WriteLog("Close RadioEPG session and connection");          
-                boolRadioEPGConfigured = false; //Not configured
+                if (boolRadioEPGConfigured)
+                {
+                    WriteLog("Close RadioEPG session and connection");
+                    boolRadioEPGConfigured = false; //Not configured
+                }
+                else WriteLog("Close RadioEPG - Nothing to do");
             }
-            else WriteLog("Close RadioEPG - Nothing to do");
-
+            catch (Exception errmsg)
+            {
+                WriteLog("Failed to CloseRadioEPG, " + errmsg.ToString());
+            }
+            
             return true;
         }
 

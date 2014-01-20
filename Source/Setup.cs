@@ -1,5 +1,5 @@
 /*
- * Copyright 2012, 2013, John Jore
+ * Copyright 2012, 2013, 2014, John Jore
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -23,22 +23,19 @@ using System;
 using System.Windows.Forms;
 using centrafuse.Plugins;
 
-/*using System.Xml;
-using System.Web;*/
-
 namespace DABFMMonkey
 {
     [System.ComponentModel.DesignerCategory("Code")]
     public class Setup : CFSetup
-    {
-
+    {        
 #region Variables
+        private const string PluginName = "DABFMMonkey";
         private const string PluginPath = @"plugins\DABFMMonkey\";
         private const string PluginPathLanguages = PluginPath + @"Languages\";
-        private const string ConfigurationFile = "config.xml";
-        private const string ConfigSection = "/APPCONFIG/";
-        private const string LanguageSection = "/APPLANG/SETUP/";
-        private const string LanguageControlSection = "/APPLANG/DABFMMONKEY/";
+        //private const string ConfigurationFile = "config.xml";
+        //private const string ConfigSection = "/APPCONFIG/";
+        //private const string LanguageSection = "/APPLANG/SETUP/";
+        //private const string LanguageControlSection = "/APPLANG/DABFMMONKEY/";
 
         // This is duplicate of hardware.cs. Can duplication be removed?
         private string[] DABStandardFrequencyIndex = new string[] { "5A", "5B", "5C", "5D", "6A", "6B", "6C", "6D", "7A", "7B", "7C", "7D", "8A", "8B", "8C", "8D", "9A", "9B", "9C", "9D", "10A", "10N", "10B", "10C", "10D", "11A", "11N", "11B", "11C", "11D", "12A", "12N", "12B", "12C", "12D", "13A", "13B", "13C", "13D", "13E", "13F" };
@@ -57,7 +54,7 @@ namespace DABFMMonkey
 
             // MainForm must be set before calling any Centrafuse API functions
             this.MainForm = mForm;
-
+           
             // pluginConfig and pluginLang should be set before calling CF_initSetup() so this CFSetup instance 
             // will internally save any changed settings.
             this.pluginConfig = config;
@@ -157,12 +154,6 @@ namespace DABFMMonkey
                     ButtonHandler[i] = new CFSetupHandler(SetGUIMode);
                     ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/MINISTATUS");
                     ButtonValue[i++] = this.pluginConfig.ReadField("/APPCONFIG/MINISTATUS");
-
-                    /*
-                    ButtonHandler[i] = new CFSetupHandler(ClearBoardBeforeScan);
-                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/CLEARBOARDBEFORESCAN");
-                    ButtonValue[i++] = this.pluginConfig.ReadField("/APPCONFIG/CLEARBOARDBEFORESCAN");
-                    */                    
                 }
                 else if (currentpage == 3)
                 {
@@ -193,6 +184,12 @@ namespace DABFMMonkey
                     
                     ButtonHandler[i] = null; ButtonText[i] = ""; ButtonValue[i++] = "";
                     ButtonHandler[i] = null; ButtonText[i] = ""; ButtonValue[i++] = "";
+
+                    /*
+                    ButtonHandler[i] = new CFSetupHandler(ClearBoardBeforeScan);
+                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/CLEARBOARDBEFORESCAN");
+                    ButtonValue[i++] = this.pluginConfig.ReadField("/APPCONFIG/CLEARBOARDBEFORESCAN");
+                    */
                 }
                 else if (currentpage == 4 && advanced == true)
                 {
@@ -261,27 +258,11 @@ namespace DABFMMonkey
                     ButtonHandler[i] = null; ButtonText[i] = ""; ButtonValue[i++] = "";
                     ButtonHandler[i] = null; ButtonText[i] = ""; ButtonValue[i++] = "";
                 }
-
-                
-
-// Not used
-/*              
-                    ButtonHandler[i] = new CFSetupHandler(SetProgramType);
-                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/PROGRAMTYPES");
-                    ButtonValue[i++] = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/PROGRAMTYPES");
-
-                    ButtonHandler[i] = new CFSetupHandler(SetStatusMessage);
-                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/STATUS");
-                    ButtonValue[i++] = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/STATUS");
-
-                    ButtonHandler[i] = null; ButtonText[i] = ""; ButtonValue[i++] = "";
-
-                    // BOOL BUTTONS (5-8)
-                    ButtonHandler[i] = null; ButtonText[i] = ""; ButtonValue[i++] = "";
-                }
-*/                
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to handle CF_setupReadSettings(), " + errmsg.ToString());
+            }
         }
 #endregion
 
@@ -297,16 +278,17 @@ namespace DABFMMonkey
                 // Display OSK for user to type display name
                 if (this.CF_systemDisplayDialog(CF_Dialogs.OSK, this.pluginLang.ReadField("/APPLANG/SETUP/DISPLAYNAME"), ButtonValue[(int)value], null, out resultvalue, out resulttext, out tempobject, null, true, true, true, true, false, false, 1) == DialogResult.OK)
                 {
-                    // save user value, note this does not save to file yet, as this should only be done when user confirms settings
-                    // being overwritten when they click the "Save" button.  Saving is done internally by the CFSetup instance if
-                    // pluginConfig and pluginLang were properly set before callin CF_initSetup().
+                    //Update with new value
                     this.pluginLang.WriteField("/APPLANG/DABFMMONKEY/DISPLAYNAME", resultvalue);
 
                     // Display new value on Settings Screen button
                     ButtonValue[(int)value] = resultvalue;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetDisplayName(), " + errmsg.ToString());
+            }
         }
 
         private void SetRegion(ref object value)
@@ -318,8 +300,15 @@ namespace DABFMMonkey
                 string[] aryRegionList= new string[0];
 
                 //Get the regions and extand the Array with the values
-                try {aryRegionList = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/REGIONLIST").Split(','); }
-                catch { }
+                try
+                {
+                    aryRegionList = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/REGIONLIST").Split(',');
+                }
+                catch (Exception errmsg)
+                {
+                    CFTools.writeError(PluginName + ": Failed to split REGIONLIST, " + errmsg.ToString());
+                }
+
 
                 // Create a listview with the number of items in the Array
                 CFControls.CFListViewItem[] textoptions = new CFControls.CFListViewItem[aryRegionList.Length+1]; // Add one for the "none" / "blank" entry
@@ -329,7 +318,7 @@ namespace DABFMMonkey
                 int i = 1;
                 foreach (string s in aryRegionList)
                 {
-                    CFTools.writeLog("DABFMMonkey: ", "Regions: '" + s + "'");
+                    CFTools.writeLog(PluginName + ": Regions: '" + s + "'");
                     textoptions[i++] = new CFControls.CFListViewItem(s, s, -1, false);
                 }                
 
@@ -350,11 +339,12 @@ namespace DABFMMonkey
                         this.pluginLang.WriteField("/APPLANG/DABFMMONKEY/REGION", resultvalue);
                         ButtonValue[(int)value] = resultvalue;
                     }
-
-                    
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetRegion(), " + errmsg.ToString());
+            }
         }
 
         private void ECCRegion(ref object value)
@@ -367,7 +357,10 @@ namespace DABFMMonkey
 
                 //Get the regions and extand the Array with the values
                 try { aryRegionList = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/ECCREGIONLIST").Split(','); }
-                catch { }
+                catch (Exception errmsg)
+                {
+                    CFTools.writeError(PluginName + ": Failed to split ECC RegionList, " + errmsg.ToString());
+                }
 
                 // Create a listview with the number of items in the Array
                 CFControls.CFListViewItem[] textoptions = new CFControls.CFListViewItem[aryRegionList.Length + 1]; // Add one for the "none" / "blank" entry
@@ -377,7 +370,7 @@ namespace DABFMMonkey
                 int i = 1;
                 foreach (string s in aryRegionList)
                 {
-                    CFTools.writeLog("DABFMMonkey: ", "ECC Regions: '" + s + "'");
+                    CFTools.writeLog(PluginName + ": ECC Regions: '" + s + "'");
                     textoptions[i++] = new CFControls.CFListViewItem(s, s, -1, false);
                 }
 
@@ -400,7 +393,10 @@ namespace DABFMMonkey
                     }
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to handle ECCRegion()" + errmsg.ToString());
+            }
         }
 
         private void SetVolume(ref object value)
@@ -425,7 +421,10 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = intTemp.ToString();
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to handle Setvolume(), " + errmsg.ToString());
+            }
         }
 
         private void SetPort(ref object value)
@@ -453,7 +452,10 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = resultvalue;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetPort(), " + errmsg.ToString());
+            }
         }
 
         private void SetVID(ref object value)
@@ -475,7 +477,10 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = resultvalue;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetVID(), " + errmsg.ToString());
+            }
         }
 
         private void SetPID(ref object value)
@@ -497,7 +502,10 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = resultvalue;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg)
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetPID(), " + errmsg.ToString());
+            }
         }
 
         private void SetScanStart(ref object value)
@@ -507,13 +515,14 @@ namespace DABFMMonkey
                 object tempobject;
                 string resultvalue, resulttext;
 
+
                 // Create a listview with the number of items in the Array. We can use the Standard Array, as it contains all from the China band
                 CFControls.CFListViewItem[] textoptions = new CFControls.CFListViewItem[DABStandardFrequencyIndex.Length];
 
                 // Populate the list with the options
                 for (sbyte i = 0; i < DABStandardFrequencyIndex.Length; i++)
                 {
-                    CFTools.writeLog("DABFMMonkey: ", "Layout Option='" + DABStandardFrequencyIndex[i] + "'");
+                    CFTools.writeLog(PluginName + ": Layout Option='" + DABStandardFrequencyIndex[i] + "'");
                     textoptions[i] = new CFControls.CFListViewItem(DABStandardFrequencyIndex[i] + " (" + DABStandardFrequencyMHz[i] + "MHz) ", i.ToString(), -1, false);
                 }
 
@@ -528,7 +537,10 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = resulttext.Substring(0, resulttext.IndexOf(' '));
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetScanStart(), " + errmsg.ToString());
+            }
         }
 
         private void SetScanEnd(ref object value)
@@ -544,7 +556,7 @@ namespace DABFMMonkey
                 // Populate the list with the options
                 for (sbyte i = 0; i < DABStandardFrequencyIndex.Length; i++)
                 {
-                    CFTools.writeLog("DABFMMonkey: ", "Layout Option='" + DABStandardFrequencyIndex[i] + "'");
+                    CFTools.writeLog(PluginName + ": Layout Option='" + DABStandardFrequencyIndex[i] + "'");
                     textoptions[i] = new CFControls.CFListViewItem(DABStandardFrequencyIndex[i] + " (" + DABStandardFrequencyMHz[i] + "MHz) ", i.ToString(), -1, false);
                 }
 
@@ -559,7 +571,10 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = resulttext.Substring(0, resulttext.IndexOf(' '));
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to Handle SetScanEnd(), " + errmsg.ToString());
+            }
         }
 
         private void SetLogEvents(ref object value)
@@ -651,7 +666,7 @@ namespace DABFMMonkey
                 //Populate the CFListView
                 for (int i=0; i < aryRowList.Length; i++)
                 {
-                    CFTools.writeLog("DABFMMonkey: ", "Row Option: '" + aryRowList[i].ToString() + "'");
+                    CFTools.writeLog(PluginName + ": Row Option: '" + aryRowList[i].ToString() + "'");
                     textoptions[i] = new CFControls.CFListViewItem(aryRowList[i].ToString(), aryRowList[i].ToString(), -1, false);
                 }
 
@@ -665,7 +680,10 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = resultvalue;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetListRows(), " + errmsg.ToString());
+            }
         }
 
         private void SetPlayBack(ref object value)
@@ -687,7 +705,7 @@ namespace DABFMMonkey
                 textoptions[0] = new CFControls.CFListViewItem(this.pluginLang.ReadField("/APPLANG/SETUP/NONE"), this.pluginLang.ReadField("/APPLANG/SETUP/NONE"), -1, false);                
                 for(i = 0; i < aryPlaybackDevices.Length; i++)
                 {
-                    CFTools.writeLog("DABFMMonkey: ", "Device='" + aryPlaybackDevices[i].MixerDevice + "' Input='" + aryPlaybackDevices[i].MixerInput + "' Device Name='" + aryPlaybackDevices[i].Name + "'");
+                    CFTools.writeLog(PluginName + ": Device='" + aryPlaybackDevices[i].MixerDevice + "' Input='" + aryPlaybackDevices[i].MixerInput + "' Device Name='" + aryPlaybackDevices[i].Name + "'");
                     textoptions[i + 1] = new CFControls.CFListViewItem(aryPlaybackDevices[i].Name, aryPlaybackDevices[i].Name, -1, false);
                 }
 
@@ -711,7 +729,10 @@ namespace DABFMMonkey
 
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetPlayBack(), " + errmsg.ToString());
+            }
         }
 
         private void SetLineIn(ref object value)
@@ -733,7 +754,7 @@ namespace DABFMMonkey
                 textoptions[0] = new CFControls.CFListViewItem(this.pluginLang.ReadField("/APPLANG/SETUP/NONE"), this.pluginLang.ReadField("/APPLANG/SETUP/NONE"), -1, false);
                 for (i = 0; i < aryRecordDevices.Length; i++)
                 {
-                    CFTools.writeLog("DABFMMonkey: ", "Device='" + aryRecordDevices[i].MixerDevice + "' Input='" + aryRecordDevices[i].MixerInput + "' Device Name='" + aryRecordDevices[i].Name + "'");
+                    CFTools.writeLog(PluginName + ": Device='" + aryRecordDevices[i].MixerDevice + "' Input='" + aryRecordDevices[i].MixerInput + "' Device Name='" + aryRecordDevices[i].Name + "'");
                     textoptions[i + 1] = new CFControls.CFListViewItem(aryRecordDevices[i].Name, aryRecordDevices[i].Name, -1, false);
                 }
 
@@ -754,10 +775,12 @@ namespace DABFMMonkey
                         this.pluginConfig.WriteField("/APPCONFIG/LINEIN", resultvalue);
                         ButtonValue[(int)value] = resultvalue;
                     }
-
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetLineIn(), " + errmsg.ToString());
+            }
         }
         
         private void SetSLSLayout(ref object value)
@@ -777,7 +800,7 @@ namespace DABFMMonkey
                 // Populate the list with the options
                 for (sbyte i = 0; i < arySLSLayout.Length; i++)
                 {
-                    CFTools.writeLog("DABFMMonkey: ", "Layout Option='" + arySLSLayout[i] + "'");
+                    CFTools.writeLog(PluginName + ": Layout Option='" + arySLSLayout[i] + "'");
                     textoptions[i] = new CFControls.CFListViewItem(arySLSLayout[i], i.ToString(), -1, false);
                 }
 
@@ -794,7 +817,10 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = arySLSLayout[Convert.ToSByte(resultvalue)];
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetSLSLayout(), " + errmsg.ToString());
+            }
         }
 
         private void SetHotkeyLAUNCH(ref object value)
@@ -816,7 +842,10 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = resultvalue;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetHotkeyLAUNCH(), " + errmsg.ToString());
+            }
         }
 
         private void SetHotkeyLOADNEXTTRACK(ref object value)
@@ -838,7 +867,10 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = resultvalue;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetHotkeyLOADNEXTTRACK(), " + errmsg.ToString());
+            }
         }
 
         private void SetHotkeyLOADPREVIOUSTRACK(ref object value)
@@ -860,7 +892,11 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = resultvalue;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg) 
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetHotkeyLOADPREVIOUSTRACK(), " + errmsg.ToString());
+            }
+
         }
 
         private void SetHotkeyRADIOSEEKFORWARD(ref object value)
@@ -882,7 +918,10 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = resultvalue;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg)
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetHotkeyRADIOSEEKFORWARD(), " + errmsg.ToString());
+            }
         }
 
         private void SetHotkeyRADIOSEEKBACK(ref object value)
@@ -904,7 +943,10 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = resultvalue;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg)
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetHotkeyRADIOSEEKBACK(), " + errmsg.ToString());
+            }
         }
 
         private void SetHotkeyFM(ref object value)
@@ -926,7 +968,11 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = resultvalue;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg)
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetHotkeysFM(), " + errmsg.ToString());
+            }
+
         }
 
         private void SetHotkeyDAB(ref object value)
@@ -948,7 +994,11 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = resultvalue;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg)
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetHotkeydab(), " + errmsg.ToString());
+            }
+
         }
 
         private void SetHotkeySCAN(ref object value)
@@ -970,7 +1020,10 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = resultvalue;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg)
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetHotkeySCAN(), " + errmsg.ToString());
+            }
         }
 
         private void SetHotkeyTOGGLEDABFM(ref object value)
@@ -992,7 +1045,10 @@ namespace DABFMMonkey
                     ButtonValue[(int)value] = resultvalue;
                 }
             }
-            catch (Exception errmsg) { CFTools.writeError(errmsg.Message, errmsg.StackTrace); }
+            catch (Exception errmsg)
+            {
+                CFTools.writeError(PluginName + ": Failed to handle SetHotkeyTOGGLEDABFM(), " + errmsg.ToString());
+            }
         }
     
 #endregion
