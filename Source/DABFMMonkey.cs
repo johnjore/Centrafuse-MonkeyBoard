@@ -21,15 +21,16 @@
 
 /*
  * Future:
- *      add recording?
- *
-
-Fix long press (Move to CML in skin file)
-Move to use a FIFO buffer for RadioCommands
-Mute/ATT and unmute/UnATT
-next/prev hotkey = same as media player
-
-*/
+ *      add recording from radio?
+ *      Move code used for FileBrowser to Advanced List view (Copy CF's Mixer)
+ *      Use new AdvancedList view for Select
+ *      Scrolling with pageup/down
+ *      Fix thread so it can read init variable (Try re-using timer functions from Mixer area)
+ *      BBE Presets?
+ *      
+ *  Can't be done:
+ *      Utilize CF's volume slider at the bottom (Boards own volume control)
+ */
 
 using centrafuse.Plugins;
 using System;
@@ -66,6 +67,7 @@ namespace DABFMMonkey
         private const string BBEEQFile = "BBEEQ.xml";
 		private const string LogFile= "DABFMMonkey.log";
         private static string LogFilePath = CFTools.AppDataPath + "\\Plugins\\" + PluginName + "\\" + LogFile; // we write the log to the appropriate users local appdata directory in the Plugins subfolder...
+        public static string settingsPath = CFTools.AppDataPath + "\\system\\settings.xml";
 
         //Max channels
         private const byte MAXDABChannels = 200;
@@ -141,7 +143,7 @@ namespace DABFMMonkey
                     }
                     catch (Exception errmsg)
                     {
-                        CFTools.writeError("Failed to investigate configuration file, " + errmsg.ToString());
+                        CFTools.writeError(PluginName + ", Failed to investigate configuration file, " + errmsg.ToString());
                     }
                 }
 
@@ -416,13 +418,13 @@ namespace DABFMMonkey
             }
 
             //Stop everything
-            if (init && RadioCommand == MonkeyCommand.NONE)
-            {
-                WriteLog("Send STOPSTREAM");
-                RadioCommand = MonkeyCommand.STOPSTREAM;
+            //if (init && RadioCommand == MonkeyCommand.NONE)
+            WriteLog("Send STOPSTREAM");
+            //RadioCommand = MonkeyCommand.STOPSTREAM;
+            RadioCommand.Enqueue(MonkeyCommand.STOPSTREAM);
 
-                while (RadioCommand != MonkeyCommand.NONE) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
-            }
+            //while (RadioCommand != MonkeyCommand.NONE) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
+            while (RadioCommand.Count > 0) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
 
             WriteLog("ClearRDSVars()");
             ClearRDSVars();         // Clear the rds info bars
@@ -458,7 +460,8 @@ namespace DABFMMonkey
                     StartAudio();
                 }
                 // UnMute. Set the volume to preMute level
-                RadioCommand = MonkeyCommand.SETVOLUME;
+                //RadioCommand = MonkeyCommand.SETVOLUME;
+                RadioCommand.Enqueue(MonkeyCommand.SETVOLUME);
             }
             
             WriteLog("CF_pluginResume() - end");
@@ -489,12 +492,28 @@ namespace DABFMMonkey
                         BackTuneClick();
                         break;
                     case "RadioSeekForward":
-                        WriteLog("RadioSeekForward");
-                        FwdFineTuneClick(null, null);
+                        if (boolEnableAudio == true)
+                        {
+                            WriteLog("RadioSeekForward");
+                            FwdFineTuneClick(null, null);    
+                        }
+                        else
+                        {
+                            WriteLog("Not active audio source, passing to CF if mediaplayer is active");
+                            if (ReadCFValue("SETTINGS/CURRENT/MUSICMODE", "1", settingsPath)) CF3_executeCMLAction("Centrafuse.CFActions.NextSong");
+                        }                       
                         break;
                     case "RadioSeekBack":
-                        WriteLog("RadioSeekBack");
-                        BackFineTuneClick(null, null);
+                        if (boolEnableAudio == true)
+                        {
+                            WriteLog("RadioSeekBack");
+                            BackFineTuneClick(null, null);                            
+                        }
+                        else
+                        {
+                            WriteLog("Not active audio source, passing to CF if mediaplayer is active");
+                            if (ReadCFValue("SETTINGS/CURRENT/MUSICMODE", "1", settingsPath)) CF3_executeCMLAction("Centrafuse.CFActions.PrevSong");
+                        }
                         break;
                     case "FM":
                         WriteLog("FM");
@@ -743,7 +762,8 @@ namespace DABFMMonkey
                         return true;
 
                     case "SETSTEREOMODE": // Set radio to forced mono or auto detect stereo mode
-                        if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.STEREOMODE;
+                        //if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.STEREOMODE;
+                        RadioCommand.Enqueue(MonkeyCommand.STEREOMODE);
                         return true;
 
                     case "DELETE":
@@ -888,31 +908,34 @@ namespace DABFMMonkey
                     { 
                         intNewDABFMMode = (RADIO_TUNE_BAND)Enum.Parse(typeof(RADIO_TUNE_BAND), this.pluginConfig.ReadField("/APPCONFIG/ACTIVEBAND"), true); 
                     }
-                    catch (Exception errmsg)
+                    catch
                     {
-                        WriteLog("Failed to set 'intNewDABFMMode, " + errmsg.ToString());
+                        //WriteLog("Failed to set 'intNewDABFMMode, setting default" + errmsg.ToString());
+                        base.pluginConfig.WriteField("/APPCONFIG/ACTIVEBAND", intDABFMMode.ToString(), true);                        
                     }
-
                     WriteLog("XML ACTIVEBAND: '" + intNewDABFMMode.ToString() + "'");
 
-                    try { 
+                    try 
+                    {
                         intLASTDAB = UInt32.Parse(this.pluginConfig.ReadField("/APPCONFIG/LASTDAB"));
                         intLASTDAB = fixFreq(RADIO_TUNE_BAND.DAB_BAND, intLASTDAB);
                     }
-                    catch (Exception errmsg)
+                    catch
                     {
-                        WriteLog("Failed to set intLASTDAB, " + errmsg.ToString());
+                        //WriteLog("Failed to set intLASTDAB, " + errmsg.ToString());
+                        base.pluginConfig.WriteField("/APPCONFIG/LASTDAB", intLASTDAB.ToString(), true);
                     }
-
                     WriteLog("XML LASTDAB: '" + intLASTDAB.ToString() + "'");
 
-                    try { 
+                    try 
+                    { 
                         intLASTFM = UInt32.Parse(this.pluginConfig.ReadField("/APPCONFIG/LASTFM"));
                         intLASTFM = fixFreq(RADIO_TUNE_BAND.FM_BAND, intLASTFM);
                     }
-                    catch (Exception errmsg)
+                    catch
                     {
-                        WriteLog("Failed to set intLASTFM, " + errmsg.ToString());
+                        //WriteLog("Failed to set intLASTFM, " + errmsg.ToString());
+                        base.pluginConfig.WriteField("/APPCONFIG/LASTDAB", intLASTFM.ToString(), true);
                     }
                     WriteLog("XML LASTFM: '" + intLASTFM.ToString() + "'");
 
@@ -953,7 +976,6 @@ namespace DABFMMonkey
                         CF_clearRecordBuffer(true);
                         CF_updateBufferStatus(CF_params.pluginName, _isBufferRadio);                       
                     }
-
                     WriteLog("CF_params.Media.recordDevice : " + CF_params.Media.recordDevice);
                     WriteLog("CF_params.Media.recordLine   : " + CF_params.Media.recordLine);
                     
@@ -1010,6 +1032,28 @@ namespace DABFMMonkey
             }
             while (newboolSCANFM);
             WriteLog("End of 'newsubSCANFM' thread");
+        }
+
+        //Read CF settings
+        private Boolean ReadCFValue(string thenode, string pname, string strFile)
+        {
+            try
+            {
+                XmlDocument document = new XmlDocument();
+                document.Load(strFile);
+                string str = document.SelectSingleNode(thenode).InnerText;
+                if (str.Trim().ToUpper() == pname.Trim().ToUpper())
+                    return true;
+                else
+                    return false;
+            }
+
+            catch (Exception exception)
+            {
+                CFTools.writeError(PluginName + ", " + exception.Message, exception.StackTrace);
+            }
+
+            return false;
         }
 
 #endregion
@@ -1085,7 +1129,8 @@ namespace DABFMMonkey
                     if (this.pluginConfig.ReadField("/APPCONFIG/VOLUME") == "") this.pluginConfig.WriteField("/APPCONFIG/VOLUME", ((sbyte)Volume.Max).ToString(), true);
 
                     DABFMMonkeyVolume = (Volume)sbyte.Parse(this.pluginConfig.ReadField("/APPCONFIG/VOLUME"));
-                    if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETVOLUME;
+                    //if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETVOLUME;
+                    RadioCommand.Enqueue(MonkeyCommand.SETVOLUME);
                 }
                 catch { DABFMMonkeyVolume = Volume.Max;  }
                 WriteLog("XML Volume: '" + DABFMMonkeyVolume.ToString() + "'");
@@ -1523,12 +1568,17 @@ namespace DABFMMonkey
                 SaveCurrentStatus();
 
                 WriteLog("Send STOPSTREAM");
-                if (init) RadioCommand = MonkeyCommand.STOPSTREAM;
-                while (RadioCommand != MonkeyCommand.NONE) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
+                RadioCommand.Clear();
+                //if (init) RadioCommand = MonkeyCommand.STOPSTREAM;
+                RadioCommand.Enqueue(MonkeyCommand.STOPSTREAM);
+                //while (RadioCommand != MonkeyCommand.NONE) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
+                while (RadioCommand.Count > 0) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
 
                 WriteLog("Send CLOSERADIOPORT");
-                if (init) RadioCommand = MonkeyCommand.CLOSERADIOPORT;
-                while (RadioCommand != MonkeyCommand.NONE) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
+                //if (init) RadioCommand = MonkeyCommand.CLOSERADIOPORT;
+                RadioCommand.Enqueue(MonkeyCommand.CLOSERADIOPORT);
+                //while (RadioCommand != MonkeyCommand.NONE) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
+                while (RadioCommand.Count > 0) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
 
                 // Radio no longer initialized
                 threadIOComms.Abort(); // Kill the thread
@@ -1563,7 +1613,8 @@ namespace DABFMMonkey
                     WriteLog("ATT - Old volume : '" + DABFMMonkeyVolume.ToString() + "', New ATT volume: '" + DABFMMonkeyATTVolume.ToString() + "'");
 
                     //Set new volume level
-                    RadioCommand = MonkeyCommand.SETATTVOLUME;                      
+                    //RadioCommand = MonkeyCommand.SETATTVOLUME;
+                    RadioCommand.Enqueue(MonkeyCommand.SETATTVOLUME);
                     break;
 
                 case "MUTE":
@@ -1576,7 +1627,8 @@ namespace DABFMMonkey
                         WriteLog("MUTE/ATT - Old volume : '" + DABFMMonkeyVolume.ToString() + "', New ATT volume: '" + DABFMMonkeyATTVolume.ToString() + "'");
 
                         //Set new volume level
-                        RadioCommand = MonkeyCommand.SETATTVOLUME;
+                        //RadioCommand = MonkeyCommand.SETATTVOLUME;
+                        RadioCommand.Enqueue(MonkeyCommand.SETATTVOLUME);
                     }
                     else
                     {
@@ -1586,7 +1638,8 @@ namespace DABFMMonkey
                         WriteLog("MUTE/MUTE - Old volume : '" + DABFMMonkeyVolume.ToString() + "', New Mute volume: '" + DABFMMonkeyATTVolume.ToString() + "'");
 
                         //Set new volume level
-                        RadioCommand = MonkeyCommand.SETATTVOLUME;
+                        //RadioCommand = MonkeyCommand.SETATTVOLUME;
+                        RadioCommand.Enqueue(MonkeyCommand.SETATTVOLUME);
                     }
                     break;
 
@@ -1596,7 +1649,8 @@ namespace DABFMMonkey
                     WriteLog("DISABLEATT / UNMUTE - Old volume : '" + DABFMMonkeyVolume.ToString() + "'");
 
                     //Set new volume level
-                    RadioCommand = MonkeyCommand.SETVOLUME;                      
+                    //RadioCommand = MonkeyCommand.SETVOLUME;
+                    RadioCommand.Enqueue(MonkeyCommand.SETVOLUME);
                     break;
 
                 default:

@@ -221,7 +221,8 @@ namespace DABFMMonkey
                         else
                         {
                             WriteLog("No DAB Programs, will start a Scan");
-                            if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SCANDAB;
+                            //if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SCANDAB;
+                            RadioCommand.Enqueue(MonkeyCommand.SCANDAB);
                         }
                         break;
                     case RADIO_TUNE_BAND.DAB_BAND:
@@ -296,7 +297,8 @@ namespace DABFMMonkey
                 switch (intDABFMMode)
                 {
                     case RADIO_TUNE_BAND.DAB_BAND:
-                        if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SCANDAB;
+                        //if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SCANDAB;
+                        RadioCommand.Enqueue(MonkeyCommand.SCANDAB);
                         break;
                     case RADIO_TUNE_BAND.FM_BAND:
                         if (newboolSCANFM)
@@ -410,7 +412,8 @@ namespace DABFMMonkey
                         }
                         break;
                     case RADIO_TUNE_BAND.DAB_BAND:
-                        if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.TUNESELECT;
+                        //if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.TUNESELECT;
+                        RadioCommand.Enqueue(MonkeyCommand.TUNESELECT);
                         break;
                     default:
                         this.WriteLog("Undefined Mode");
@@ -497,7 +500,8 @@ namespace DABFMMonkey
                     WriteLog("Resultvalue / text: '" + resultvalue + "' / '" + resulttext + "'");
                     try {
                         //Clear the command early, as TuneFreq(), launched from TuneSelect() will not launch as existing command is in progress
-                        RadioCommand = MonkeyCommand.NONE;
+                        //RadioCommand = MonkeyCommand.NONE;
+                        RadioCommand.Clear();
                         
                         //Find the board Index # for the users selection
                         for (UInt32 j = 0; j < aryDABChannelsLong.Length; j++)
@@ -619,7 +623,8 @@ namespace DABFMMonkey
 
             try
             {
-                if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.ADDFAVBTNCLICK;
+                //if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.ADDFAVBTNCLICK;
+                RadioCommand.Enqueue(MonkeyCommand.ADDFAVBTNCLICK);
             }
             catch (Exception errmsg)
             {
@@ -1118,11 +1123,13 @@ namespace DABFMMonkey
                 base.CF_updateButtonText("Exit", this.pluginLang.ReadField("/APPLANG/SETUP/EXIT"));
 
                 //Get current BBEEQ status from board and setup the buttons
-                if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.GETBBEEQ;
+                //if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.GETBBEEQ;
+                RadioCommand.Enqueue(MonkeyCommand.GETBBEEQ);
 
                 //Wait until we have the BBEEQ Values
                 WriteLog("Waiting...");
-                do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
+                //do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
+                do { Thread.Sleep(20); } while (RadioCommand.Count > 0);
 
                 WriteLog("Success: " + _BBEEQ.BBEOn.ToString() + " " + _BBEEQ.EQMode.ToString() + " " + _BBEEQ.BBELo.ToString() + " " + _BBEEQ.BBEHi.ToString() + " " + _BBEEQ.BBECFreq.ToString() + " " + _BBEEQ.BBEMachFreq.ToString() + " " + _BBEEQ.BBEMachGain.ToString() + " " + _BBEEQ.BBEMachQ.ToString() + " " + _BBEEQ.BBESurr.ToString() + " " + _BBEEQ.BBEMp.ToString() + " " + _BBEEQ.BBEHpF.ToString() + " " + _BBEEQ.BBEHiMode.ToString());
 
@@ -1255,7 +1262,8 @@ namespace DABFMMonkey
                 base.CF_updateText("Value_HeadRoom", _BBEEQ.HeadRoom.ToString() + "dB");
 
                 //WriteLog("Save BBE Settings");
-                if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
+                //if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
+                RadioCommand.Enqueue(MonkeyCommand.SETBBEEQ);
             }
             catch (Exception errmsg)
             {
@@ -1361,8 +1369,10 @@ namespace DABFMMonkey
                 _BBEEQ.BBEOn = BBEStatus.BBE;
 
                 //Write to board
-                if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
-                do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
+                //if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
+                RadioCommand.Enqueue(MonkeyCommand.SETBBEEQ);
+                //do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
+                do { Thread.Sleep(20); } while (RadioCommand.Count > 0);
 
                 //Re-draw the Mixer screen with new button statuses
                 BBEClick();
@@ -1386,8 +1396,10 @@ namespace DABFMMonkey
                     _BBEEQ.BBEOn = BBEStatus.EQ;
 
                     //Write to board
-                    if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
-                    do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
+                    //if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
+                    RadioCommand.Enqueue(MonkeyCommand.SETBBEEQ);
+                    //do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
+                    do { Thread.Sleep(20); } while (RadioCommand.Count > 0);
                 }
                 else
                 {
@@ -1418,8 +1430,10 @@ namespace DABFMMonkey
                             _BBEEQ.EQMode = sbyte.Parse(resultvalue);
 
                             //Set EQ mode
-                            if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
-                            do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
+                            //if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
+                            RadioCommand.Enqueue(MonkeyCommand.SETBBEEQ);
+                            //do { Thread.Sleep(20); } while (RadioCommand != MonkeyCommand.NONE);
+                            do { Thread.Sleep(20); } while (RadioCommand.Count > 0);
                         }
 
                         //MixerEQ button text matches current EQ
@@ -1450,9 +1464,10 @@ namespace DABFMMonkey
                 _BBEEQ.BBEOn = BBEStatus.Off;
                 
                 //Set new BBE EQ Status
-                if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
-                do { Thread.Sleep(10); } while (RadioCommand != MonkeyCommand.NONE);
-
+                //if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.SETBBEEQ;
+                RadioCommand.Enqueue(MonkeyCommand.SETBBEEQ);
+                //do { Thread.Sleep(10); } while (RadioCommand != MonkeyCommand.NONE);
+                do { Thread.Sleep(10); } while (RadioCommand.Count > 0);
             }
             catch (Exception errmsg)
             {
@@ -1551,7 +1566,8 @@ namespace DABFMMonkey
                     if (intNewStation != 999)
                     {
                         //Play it
-                        if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.PLAYSTREAM;
+                        //if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.PLAYSTREAM;
+                        RadioCommand.Enqueue(MonkeyCommand.PLAYSTREAM);
                     }
                     else
                     {

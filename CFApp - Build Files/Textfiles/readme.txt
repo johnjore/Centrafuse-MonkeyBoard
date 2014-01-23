@@ -44,3 +44,7 @@ Revisions:
 		Hotkeys broke after entering "Settings"
 	    	Communication corruption when pause/unpause plugin
 		Added integration with Garmin Mobile PC plugin
+	09: Changes
+		Added support for ATT and mapFactor Navigator plugin
+		"Next/Prev" and steering wheel integration now requires only one button for each action for both mediaplayer and this plugin
+		General cleanup and internal changes

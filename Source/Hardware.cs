@@ -33,6 +33,7 @@ namespace DABFMMonkey
     using System.Drawing;
     using System.Net;
     using System.Windows.Forms;
+    using System.Collections.Generic;
 
     public partial class DABFMMonkey
     {
@@ -43,8 +44,9 @@ namespace DABFMMonkey
         private const string DABXMLConfigFile = PluginPathLanguages + @"DABFMMonkey.xml";
        
         // Used for radio commands. Variable is named after DLL function or button function
-        private MonkeyCommand RadioCommand = MonkeyCommand.NONE; //Radio Command. Default is no command
-     
+        //private MonkeyCommand RadioCommand = MonkeyCommand.NONE; //Radio Command. Default is no command
+        Queue<MonkeyCommand> RadioCommand = new Queue<MonkeyCommand>();
+             
         //Global Variables for RadioCommand's
         RADIO_TUNE_BAND intDABFMMode = RADIO_TUNE_BAND.UNDEFINED;               // Current radio mode
         private UInt32 intCurrentStation = 999;                                 // Current/Active station
@@ -543,15 +545,15 @@ namespace DABFMMonkey
             bool sysReady = false;
             for (int i = 1; i <= 10 && sysReady == false; i++)
             {
-                WriteLog("Waiting for Board to be ready: '" + i.ToString() + "...");
+                WriteDebug("Waiting for Board to be ready: '" + i.ToString() + "...");
                 System.Threading.Thread.Sleep(200);
-                this.BeginInvoke(new MethodInvoker(delegate { init = sysReady = IsSysReady(); }));               
+                this.BeginInvoke(new MethodInvoker(delegate { init = sysReady = IsSysReady(); }));
             }
 
             //If still not initialized, let the user know
             if (!init) this.CF_systemCommand(CF_Actions.SHOWINFO, base.pluginLang.ReadField("/APPLANG/SETUP/BOARDLOSTCONTACT"), "AUTOHIDE");
             
-            WriteLog("Status: '" + init.ToString() + "'");
+            WriteDebug("Status: '" + init.ToString() + "'");
             return (init);
         }
 
@@ -827,9 +829,10 @@ namespace DABFMMonkey
                     //Set desired station, keep same mode
                     intNewStation = Freq;
                     intNewDABFMMode = intDABFMMode;
-                    WriteLog("Current Radio command value: " + RadioCommand.ToString());
-                    if (RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.PLAYSTREAM;
-                    WriteLog("Current Radio command value: " + RadioCommand.ToString());
+                    //WriteLog("Current Radio command value: " + RadioCommand.ToString());                    
+                    //if (RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.PLAYSTREAM;
+                    RadioCommand.Enqueue(MonkeyCommand.PLAYSTREAM);
+                    //WriteLog("Current Radio command value: " + RadioCommand.ToString());
                 }
                 else 
                     WriteLog("Failed to get current mode (FM/DAB)");                
@@ -897,16 +900,16 @@ namespace DABFMMonkey
             
             try
             {
-                if (init && RadioCommand == MonkeyCommand.NONE)
+                if (init) // && RadioCommand == MonkeyCommand.NONE)
                 {
-                    if (searchDirection == RADIO_DIRECTION.UP) RadioCommand = MonkeyCommand.NEXTSTREAM; else RadioCommand = MonkeyCommand.PREVSTREAM;
+                    //if (searchDirection == RADIO_DIRECTION.UP) RadioCommand = MonkeyCommand.NEXTSTREAM; else RadioCommand = MonkeyCommand.PREVSTREAM;
+                    if (searchDirection == RADIO_DIRECTION.UP) RadioCommand.Enqueue(MonkeyCommand.NEXTSTREAM); else RadioCommand.Enqueue(MonkeyCommand.PREVSTREAM);
                 }
             }
             catch (Exception errmsg)
             {
                 WriteLog("Failed to SeekFreq(), " + errmsg.ToString());
             }
-
 
             WriteLog("End: SeekFreq()");
         }
@@ -982,11 +985,12 @@ namespace DABFMMonkey
                     WriteLog("intNewStation: '" + intNewStation.ToString() + "' RadioCommand: '" + RadioCommand.ToString() + "'");
 
                     //If we have a new mode, set it
-                    if (intNewStation != 999 && RadioCommand == MonkeyCommand.NONE)
+                    if (intNewStation != 999) // && RadioCommand == MonkeyCommand.NONE)
                     {
                         intNewDABFMMode = Band;
                         WriteLog("PlayStream: '" + intNewDABFMMode.ToString() + "' '" + intNewStation.ToString() + "'");
-                        RadioCommand = MonkeyCommand.PLAYSTREAM;
+                        //RadioCommand = MonkeyCommand.PLAYSTREAM;
+                        RadioCommand.Enqueue(MonkeyCommand.PLAYSTREAM);
 
                         WriteLog("SetTuneBand() - end");
                         return true;
@@ -1012,10 +1016,12 @@ namespace DABFMMonkey
             switch (DABVolume)
             {
                 case Volume.Up:
-                    if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.VOLUMEPLUS;
+                    //if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.VOLUMEPLUS;
+                    RadioCommand.Enqueue(MonkeyCommand.VOLUMEPLUS);
                     break;     
                 case Volume.Down:
-                    if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.VOLUMEMINUS;
+                    //if (init && RadioCommand == MonkeyCommand.NONE) RadioCommand = MonkeyCommand.VOLUMEMINUS;
+                    RadioCommand.Enqueue(MonkeyCommand.VOLUMEMINUS);
                     break;
             }
 
@@ -1174,58 +1180,53 @@ namespace DABFMMonkey
                 //We're playing audio
                 this.CF_params.Media.mediaPlaying = true;
 
-                //Start Board Commands
-                switch (RadioCommand)
-                {
-                    case MonkeyCommand.SETATTVOLUME:
-                        WriteLog("Start - SetATTVolume");
-                        SetBoardVolume(DABFMMonkeyATTVolume);
-                        WriteLog("End - SetATTVolume");
-                        break;
-                    case MonkeyCommand.SETVOLUME:
-                        WriteLog("Start - SetVolume");
-                        SetBoardVolume(DABFMMonkeyVolume);
-                        WriteLog("End - SetVolume");
-                        break;
-                    case MonkeyCommand.VOLUMEPLUS:
-                        WriteLog("Start - Volume Plus");
-                        if (WaitForBoard()) VolumePlus();
-                        //Volume updated, get the new value
-                        DABFMMonkeyVolume = GetVolume();
-                        WriteLog("Start - Volume Plus");
-                        break;
-                    case MonkeyCommand.VOLUMEMINUS:
-                        WriteLog("Start - Volume Down");
-                        if (WaitForBoard()) VolumeMinus();
-                        //Volume updated, get the new value
-                        DABFMMonkeyVolume = GetVolume();
-                        WriteLog("End - Volume Down");
-                        break;
-                    case MonkeyCommand.VOLUMEMUTE:
-                        WriteLog("Start - Mute'ing");
-                        if (WaitForBoard())
-                        {
-                            VolumeMute();
-                        }
-                        WriteLog("End - Mute'ing");
-                        break;
-                    case MonkeyCommand.STOPSTREAM:
-                        WriteLog("Start - Stopstream");
-                        if (WaitForBoard())
-                        {
-                            if (StopStream()) WriteLog("Error stopping stream"); else WriteLog("Stream Stopped");
 
+                //Start Board Commands
+                //switch (RadioCommand)
+                if (RadioCommand.Count > 0 && WaitForBoard())
+                {
+                    switch (RadioCommand.Dequeue())
+                    {
+                        case MonkeyCommand.SETATTVOLUME:
+                            WriteLog("Start - SetATTVolume");
+                            SetBoardVolume(DABFMMonkeyATTVolume);
+                            WriteLog("End - SetATTVolume");
+                            break;
+                        case MonkeyCommand.SETVOLUME:
+                            WriteLog("Start - SetVolume");
+                            SetBoardVolume(DABFMMonkeyVolume);
+                            WriteLog("End - SetVolume");
+                            break;
+                        case MonkeyCommand.VOLUMEPLUS:
+                            WriteLog("Start - Volume Plus");
+                            VolumePlus();
+                            //Volume updated, get the new value
+                            DABFMMonkeyVolume = GetVolume();
+                            WriteLog("Start - Volume Plus");
+                            break;
+                        case MonkeyCommand.VOLUMEMINUS:
+                            WriteLog("Start - Volume Down");
+                            VolumeMinus();
+                            //Volume updated, get the new value
+                            DABFMMonkeyVolume = GetVolume();
+                            WriteLog("End - Volume Down");
+                            break;
+                        case MonkeyCommand.VOLUMEMUTE:
+                            WriteLog("Start - Mute'ing");
+                            VolumeMute();
+                            WriteLog("End - Mute'ing");
+                            break;
+                        case MonkeyCommand.STOPSTREAM:
+                            WriteLog("Start - Stopstream");
+                            if (StopStream() == false) WriteLog("Error stopping stream"); else WriteLog("Stream Stopped");                            
                             //Close RadioVIS
                             CloseRadioVIS();
-                        }
-                        WriteLog("End - Stopstream");
-                        break;
-                    case MonkeyCommand.PLAYSTREAM:
-                        WriteLog("Start - Playstream");
-                        WriteLog("PlayStream: '" + intNewDABFMMode.ToString() + "' '" + intNewStation.ToString() + "'");
+                            WriteLog("End - Stopstream");
+                            break;
+                        case MonkeyCommand.PLAYSTREAM:
+                            WriteLog("Start - Playstream");
+                            WriteLog("PlayStream: '" + intNewDABFMMode.ToString() + "' '" + intNewStation.ToString() + "'");
 
-                        if (WaitForBoard())
-                        {
                             //Changing channel, close RadioVIS
                             CloseRadioVIS();
 
@@ -1257,153 +1258,160 @@ namespace DABFMMonkey
                             ClearRDSVars();
 
                             //Clear the command early, as some sub's re-set this value, globally clearing it does not work
-                            RadioCommand = MonkeyCommand.NONE;
+                            //RadioCommand = MonkeyCommand.NONE;
+                            RadioCommand.Clear();
 
                             WriteLog("End - Playstream");
-                        }
-                        break;
-                    case MonkeyCommand.NEXTSTREAM:
-                        WriteLog("Start - Nextstream");
-                        switch (intDABFMMode)
-                        {
-                            case RADIO_TUNE_BAND.DAB_BAND:
-                                //Changing channel, close RadioVIS
-                                CloseRadioVIS();
-
-                                //Loop until we find the next program not blacklisted
-                                bool boolBlackListed = false;
-                                do
-                                {
-                                    if (WaitForBoard() && NextStream())
-                                    {
-                                        WriteLog("Success NextStream()");
-
-                                        //Is it blacklisted?
-                                        boolBlackListed = CurrentProgramBlackListed();
-                                    }
-                                    else WriteLog("Failed NextStream()");
-                                }
-                                while (boolBlackListed);
-
-                                //Clear the MOT segment buffer after changing DAB channel as we need to start from scratch
-                                MotReset(MotMode.SlideShow);
-                                MotReset(MotMode.EPG);
-
-                                //RadioVIS
-                                if (boolEnableInternetUsage && boolEnableRadioVIS) RadioVIS(GetPlayIndex());
-
-                                break;
-                            case RADIO_TUNE_BAND.FM_BAND:
-                                if (WaitForBoard() && NextStream()) WriteLog("Success NextStream()"); else WriteLog("Failed NextStream()");
-                                break;
-                        }
-                        WriteLog("End - Nextstream");
-                        break;
-                    case MonkeyCommand.PREVSTREAM:
-                        WriteLog("Start - Prevstream");
-                        switch (intDABFMMode)
-                        {
-                            case RADIO_TUNE_BAND.DAB_BAND:
-                                //Changing channel, close RadioVIS
-                                CloseRadioVIS();
-
-                                //Loop until we find the next program not blacklisted
-                                bool boolBlackListed = false;
-                                do
-                                {
-                                    if (WaitForBoard() && PrevStream())
-                                    {
-                                        WriteLog("Success PrevStream()");
-
-                                        //Is it blacklisted?
-                                        boolBlackListed = CurrentProgramBlackListed();
-                                    }
-                                    else WriteLog("Failed PrevStream()");
-                                }
-                                while (boolBlackListed);
-
-                                //Clear the MOT segment buffer after changing DAB channel as we need to start from scratch
-                                MotReset(MotMode.SlideShow);
-                                MotReset(MotMode.EPG);
-
-                                //RadioVIS
-                                if (boolEnableInternetUsage && boolEnableRadioVIS) RadioVIS(GetPlayIndex());
-
-                                break;
-                            case RADIO_TUNE_BAND.FM_BAND:
-                                if (WaitForBoard() && PrevStream()) WriteLog("Success PrevStream()"); else WriteLog("Failed PrevStream()");
-                                break;
-                        }
-                        WriteLog("End - Nextstream");
-                        break;
-                    case MonkeyCommand.SCANDAB:
-                        WriteLog("ScanDAB - Start");
-                        //Scan for DAB channels
-                        if (ScanDAB())
-                        {
-                            //Clear the command early, as TuneFreq will not launch as existing command is in progress
-                            RadioCommand = MonkeyCommand.NONE;
-
-                            //After Scanning, tune to channel 0 as we dont know what the user wants to listen too
-                            if (intTotalProgram > 0)
+                            break;
+                        case MonkeyCommand.NEXTSTREAM:
+                            WriteLog("Start - Nextstream");
+                            switch (intDABFMMode)
                             {
-                                intDABFMMode = RADIO_TUNE_BAND.DAB_BAND;
-                                TuneFreq(0);
-                            }
-                            else
-                            {
-                                intCurrentStation = 999; //Do not save
-                                intDABFMMode = RADIO_TUNE_BAND.DAB_BAND; //Pretend we're in DAB mode so SetTuneBand works
-                                SetTuneBand(RADIO_TUNE_BAND.FM_BAND);
-                            }
-                        }
-                        WriteLog("ScanDAB - End");
-                        break;
-                    case MonkeyCommand.ADDFAVBTNCLICK:
-                        WriteLog("Start - AddFavBtnClick");
-                        //Save station to favorites
-                        AddFavorites();
-                        WriteLog("End - AddFavBtnClick");
-                        break;
-                    case MonkeyCommand.TUNESELECT:
-                        WriteLog("Start - TuneSelect");
-                        TuneSelect();
-                        WriteLog("End - TuneSelect");
-                        break;
-                    case MonkeyCommand.STEREOMODE:
-                        WriteLog("Start - StereoMode");
-                        SetStereoModeClick();
-                        WriteLog("End - StereoMode");
-                        break;
-                    case MonkeyCommand.GETBBEEQ:
-                        WriteLog("Start - GetBBEEQ");
-                        RetrieveBBEEQ();
-                        WriteLog("Check: " + _BBEEQ.BBEOn.ToString() + " " + _BBEEQ.EQMode.ToString() + " " + _BBEEQ.BBELo.ToString() + " " + _BBEEQ.BBEHi.ToString() + " " + _BBEEQ.BBECFreq.ToString() + " " + _BBEEQ.BBEMachFreq.ToString() + " " + _BBEEQ.BBEMachGain.ToString() + " " + _BBEEQ.BBEMachQ.ToString() + " " + _BBEEQ.BBESurr.ToString() + " " + _BBEEQ.BBEMp.ToString() + " " + _BBEEQ.BBEHpF.ToString() + " " + _BBEEQ.BBEHiMode.ToString());
-                        WriteLog("End - GetBBEEQ");
-                        break;
-                    case MonkeyCommand.SETBBEEQ:
-                        WriteLog("Start - SetBBEEQ");
-                        StoreBBEEQ();
-                        WriteLog("End - SetBBEEQ");
-                        break;
-                    case MonkeyCommand.CLOSERADIOPORT:
-                        WriteLog("Start - CloseRadioPort");
+                                case RADIO_TUNE_BAND.DAB_BAND:
+                                    //Changing channel, close RadioVIS
+                                    CloseRadioVIS();
 
-                        WriteLog("End - CloseRadioPort");
-                        break;
-                    default:
-                        break;
+                                    //Loop until we find the next program not blacklisted
+                                    bool boolBlackListed = false;
+                                    do
+                                    {
+                                        if (NextStream())
+                                        {
+                                            WriteLog("Success NextStream()");
+
+                                            //Is it blacklisted?
+                                            boolBlackListed = CurrentProgramBlackListed();
+                                        }
+                                        else WriteLog("Failed NextStream()");
+                                    }
+                                    while (boolBlackListed);
+
+                                    //Clear the MOT segment buffer after changing DAB channel as we need to start from scratch
+                                    MotReset(MotMode.SlideShow);
+                                    MotReset(MotMode.EPG);
+
+                                    //RadioVIS
+                                    if (boolEnableInternetUsage && boolEnableRadioVIS) RadioVIS(GetPlayIndex());
+
+                                    break;
+                                case RADIO_TUNE_BAND.FM_BAND:
+                                    if (NextStream()) WriteLog("Success NextStream()"); else WriteLog("Failed NextStream()");
+                                    break;
+                            }
+                            WriteLog("End - Nextstream");
+                            break;
+                        case MonkeyCommand.PREVSTREAM:
+                            WriteLog("Start - Prevstream");
+                            switch (intDABFMMode)
+                            {
+                                case RADIO_TUNE_BAND.DAB_BAND:
+                                    //Changing channel, close RadioVIS
+                                    CloseRadioVIS();
+
+                                    //Loop until we find the next program not blacklisted
+                                    bool boolBlackListed = false;
+                                    do
+                                    {
+                                        if (PrevStream())
+                                        {
+                                            WriteLog("Success PrevStream()");
+
+                                            //Is it blacklisted?
+                                            boolBlackListed = CurrentProgramBlackListed();
+                                        }
+                                        else WriteLog("Failed PrevStream()");
+                                    }
+                                    while (boolBlackListed);
+
+                                    //Clear the MOT segment buffer after changing DAB channel as we need to start from scratch
+                                    MotReset(MotMode.SlideShow);
+                                    MotReset(MotMode.EPG);
+
+                                    //RadioVIS
+                                    if (boolEnableInternetUsage && boolEnableRadioVIS) RadioVIS(GetPlayIndex());
+
+                                    break;
+                                case RADIO_TUNE_BAND.FM_BAND:
+                                    if (PrevStream()) WriteLog("Success PrevStream()"); else WriteLog("Failed PrevStream()");
+                                    break;
+                            }
+                            WriteLog("End - Nextstream");
+                            break;
+                        case MonkeyCommand.SCANDAB:
+                            WriteLog("ScanDAB - Start");
+                            //Scan for DAB channels
+                            if (ScanDAB())
+                            {
+                                //Clear the command early, as TuneFreq will not launch as existing command is in progress
+                                //RadioCommand = MonkeyCommand.NONE;
+                                RadioCommand.Clear();
+
+                                //After Scanning, tune to channel 0 as we dont know what the user wants to listen too
+                                if (intTotalProgram > 0)
+                                {
+                                    intDABFMMode = RADIO_TUNE_BAND.DAB_BAND;
+                                    TuneFreq(0);
+                                }
+                                else
+                                {
+                                    intCurrentStation = 999; //Do not save
+                                    intDABFMMode = RADIO_TUNE_BAND.DAB_BAND; //Pretend we're in DAB mode so SetTuneBand works
+                                    SetTuneBand(RADIO_TUNE_BAND.FM_BAND);
+                                }
+                            }
+                            WriteLog("ScanDAB - End");
+                            break;
+                        case MonkeyCommand.ADDFAVBTNCLICK:
+                            WriteLog("Start - AddFavBtnClick");
+                            //Save station to favorites
+                            AddFavorites();
+                            WriteLog("End - AddFavBtnClick");
+                            break;
+                        case MonkeyCommand.TUNESELECT:
+                            WriteLog("Start - TuneSelect");
+                            TuneSelect();
+                            WriteLog("End - TuneSelect");
+                            break;
+                        case MonkeyCommand.STEREOMODE:
+                            WriteLog("Start - StereoMode");
+                            SetStereoModeClick();
+                            WriteLog("End - StereoMode");
+                            break;
+                        case MonkeyCommand.GETBBEEQ:
+                            WriteLog("Start - GetBBEEQ");
+                            RetrieveBBEEQ();
+                            WriteLog("Check: " + _BBEEQ.BBEOn.ToString() + " " + _BBEEQ.EQMode.ToString() + " " + _BBEEQ.BBELo.ToString() + " " + _BBEEQ.BBEHi.ToString() + " " + _BBEEQ.BBECFreq.ToString() + " " + _BBEEQ.BBEMachFreq.ToString() + " " + _BBEEQ.BBEMachGain.ToString() + " " + _BBEEQ.BBEMachQ.ToString() + " " + _BBEEQ.BBESurr.ToString() + " " + _BBEEQ.BBEMp.ToString() + " " + _BBEEQ.BBEHpF.ToString() + " " + _BBEEQ.BBEHiMode.ToString());
+                            WriteLog("End - GetBBEEQ");
+                            break;
+                        case MonkeyCommand.SETBBEEQ:
+                            WriteLog("Start - SetBBEEQ");
+                            StoreBBEEQ();
+                            WriteLog("End - SetBBEEQ");
+                            break;
+                        case MonkeyCommand.CLOSERADIOPORT:
+                            WriteLog("Start - CloseRadioPort");
+                            /**/ //xxx
+                            WriteLog("End - CloseRadioPort");
+                            break;
+                        default:
+                            break;
+                    }
                 }
 
+                /**/ //xxx
+                /*
                 //Clear the command, but not if its PLAYSTREAM, as its set in some sub's and can't be cleared here.
-                switch (RadioCommand)
+                //switch (RadioCommand)
+                switch (RadioCommand.Dequeue())
                 {
                     case MonkeyCommand.PLAYSTREAM:
                         break;
                     default:
-                        RadioCommand = MonkeyCommand.NONE;
+                        //RadioCommand = MonkeyCommand.NONE;
+                        RadioCommand.Clear();
                         break;
                 }
+                */
 
                 //Current status. Do not remove, else hardware mute will be active, resulting in low volume                
                 intPlayStatus = DABStatus.Unknown;
@@ -1512,7 +1520,8 @@ namespace DABFMMonkey
                 }
                 
                 //This is to allow commands to execute faster by returning now, and checking for a command
-                if (RadioCommand != MonkeyCommand.NONE) return;
+                //if (RadioCommand != MonkeyCommand.NONE) return;
+                if (RadioCommand.Count > 0) return;
 
 
                 //Get current stereo mode
@@ -1594,7 +1603,8 @@ namespace DABFMMonkey
                 }
 
                 //This is to allow commands to execute faster by returning now, and checking for a command
-                if (RadioCommand != MonkeyCommand.NONE) return;
+                //if (RadioCommand != MonkeyCommand.NONE) return;
+                if (RadioCommand.Count > 0) return;
 
                 //Mono / Stereo
                 string strStereoLock = "";
@@ -1632,7 +1642,8 @@ namespace DABFMMonkey
                 }
 
                 //This is to allow commands to execute faster by returning now, and checking for a command
-                if (RadioCommand != MonkeyCommand.NONE) return;
+                //if (RadioCommand != MonkeyCommand.NONE) return;
+                if (RadioCommand.Count > 0) return;
 
                 //Get Program type classification (News etc)
                 string strProgramType = "";
@@ -1661,7 +1672,8 @@ namespace DABFMMonkey
                 }
 
                 //This is to allow commands to execute faster by returning now, and checking for a command
-                if (RadioCommand != MonkeyCommand.NONE) return;
+                //if (RadioCommand != MonkeyCommand.NONE) return;
+                if (RadioCommand.Count > 0) return;
 
                 //Get Program Name
                 string strProgramName = "";
@@ -1693,7 +1705,8 @@ namespace DABFMMonkey
                 }
 
                 //This is to allow commands to execute faster by returning now, and checking for a command
-                if (RadioCommand != MonkeyCommand.NONE) return;
+                //if (RadioCommand != MonkeyCommand.NONE) return;
+                if (RadioCommand.Count > 0) return;
 
                 //Get RDS Information. Set to old value as RadioVIS does not re-set the value
                 string strRDSData = _stationName;
@@ -1738,7 +1751,7 @@ namespace DABFMMonkey
                             string strtextBuffer = new string(' ', constBufferSize); // Read buffer
 
                             sbyte res = GetProgramText(strtextBuffer);
-                            WriteLog("RDS availability: '" + res.ToString() + "'");
+                            WriteDebug("RDS availability: '" + res.ToString() + "'");
 
                             switch (res)
                             {
@@ -1770,7 +1783,8 @@ namespace DABFMMonkey
                 }
 
                 //This is to allow commands to execute faster by returning now, and checking for a command
-                if (RadioCommand != MonkeyCommand.NONE) return;
+                //if (RadioCommand != MonkeyCommand.NONE) return;
+                if (RadioCommand.Count > 0) return;
 
                 //Station information
                 string temp_stationText = "";

@@ -181,8 +181,11 @@ namespace DABFMMonkey
                     ButtonHandler[i] = new CFSetupHandler(EnableRadioVIS);
                     ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/ENABLERADIOVIS");
                     ButtonValue[i++] = this.pluginConfig.ReadField("/APPCONFIG/ENABLERADIOVIS");
-                    
-                    ButtonHandler[i] = null; ButtonText[i] = ""; ButtonValue[i++] = "";
+
+                    ButtonHandler[i] = new CFSetupHandler(SetDebugEvents);
+                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/DEBUGEVENTS");
+                    ButtonValue[i++] = this.pluginConfig.ReadField("/APPCONFIG/DEBUGEVENTS");
+
                     ButtonHandler[i] = null; ButtonText[i] = ""; ButtonValue[i++] = "";
 
                     /*
@@ -579,33 +582,26 @@ namespace DABFMMonkey
 
         private void SetLogEvents(ref object value)
         {
-            // save user value, note this does not save to file yet, as this should only be done when user confirms settings
-            // being overwritten when they click the "Save" button.  Saving is done internally by the CFSetup instance if
-            // pluginConfig and pluginLang were properly set before callin CF_initSetup().
             this.pluginConfig.WriteField("/APPCONFIG/LOGEVENTS", value.ToString());
+        }
+
+        private void SetDebugEvents(ref object value)
+        {
+            this.pluginConfig.WriteField("/APPCONFIG/DEBUGEVENTS", value.ToString());
         }
 
         private void SetRescanEvents(ref object value)
         {
-            // save user value, note this does not save to file yet, as this should only be done when user confirms settings
-            // being overwritten when they click the "Save" button.  Saving is done internally by the CFSetup instance if
-            // pluginConfig and pluginLang were properly set before callin CF_initSetup().
             this.pluginConfig.WriteField("/APPCONFIG/RESCAN", value.ToString());
         }
 
         private void SetChinaMode(ref object value)
         {
-            // save user value, note this does not save to file yet, as this should only be done when user confirms settings
-            // being overwritten when they click the "Save" button.  Saving is done internally by the CFSetup instance if
-            // pluginConfig and pluginLang were properly set before callin CF_initSetup().
             this.pluginConfig.WriteField("/APPCONFIG/CHINAMODE", value.ToString());
         }
 
         private void SetEnablePlugin(ref object value)
         {
-            // save user value, note this does not save to file yet, as this should only be done when user confirms settings
-            // being overwritten when they click the "Save" button.  Saving is done internally by the CFSetup instance if
-            // pluginConfig and pluginLang were properly set before callin CF_initSetup().
             this.pluginConfig.WriteField("/APPCONFIG/ENABLEPLUGIN", value.ToString());            
         }
 
