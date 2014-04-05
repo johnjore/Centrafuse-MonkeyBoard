@@ -51,7 +51,7 @@ namespace DABFMMonkey
         RADIO_TUNE_BAND intDABFMMode = RADIO_TUNE_BAND.UNDEFINED;               // Current radio mode
         private UInt32 intCurrentStation = 999;                                 // Current/Active station
         private int intSignalStrength = -1;                                     // Current Signal strength
-        private RADIO_TUNE_BAND intNewDABFMMode = RADIO_TUNE_BAND.FM_BAND;      // Set to this mode
+        private RADIO_TUNE_BAND intNewDABFMMode = RADIO_TUNE_BAND.DAB_BAND;      // Set to this mode
         private UInt32 intNewStation = 999;                                     // Set to this station (FM mode)
         private string strNewDABLongName = "";                                  // Set to this station (DAB mode)
         DABStatus intPlayStatus = DABStatus.Unknown;                            // Unknown board status
@@ -93,7 +93,7 @@ namespace DABFMMonkey
         private UInt32 intLASTFM = 100000; 
         private UInt32 DABRadioChannel = 100000;
         private bool boolDABFMMonkeyReScan = false; // By default, don't rescan DAB channels
-        private bool boolEnablePlugin = false; //By default, don't use the plugin to control the radio
+        private bool boolEnablePlugin = true; //By default, use the plugin to control the radio
 
         //Maps 0 to 40 for standard DAB frequencies
         private string[] DABStandardFrequencyIndex = new string[] { "5A","5B","5C","5D","6A","6B","6C","6D","7A","7B","7C","7D","8A","8B","8C","8D","9A","9B","9C","9D","10A","10N","10B","10C","10D","11A","11N","11B","11C","11D","12A","12N","12B","12C","12D","13A","13B","13C","13D","13E","13F" };
@@ -1390,7 +1390,8 @@ namespace DABFMMonkey
                             break;
                         case MonkeyCommand.CLOSERADIOPORT:
                             WriteLog("Start - CloseRadioPort");
-                            /**/ //xxx
+                            CloseRadioPort();
+                            init = false;
                             WriteLog("End - CloseRadioPort");
                             break;
                         default:

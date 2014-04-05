@@ -53,7 +53,7 @@ namespace DABFMMonkey
         private string SLSID = "SLSPicture"; //ID of picture box
 
         //Rows to show in listbox
-        private sbyte sbListRows = 4; // Default number of rows
+        private sbyte sbListRows = 8; // Default number of rows
 
         //Lists, favorites and blacklisted
         private List<Station> _favStationsList = new List<Station>();

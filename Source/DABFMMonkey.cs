@@ -20,6 +20,11 @@
  */
 
 /*
+CF_params.Media.playbackDevcie = SelectedPlaybackDeviceFromConfig;
+CF_params.Media.playbackLine = SelectedPlaybackDeviceFromConfig;
+*/
+
+/*
  * Future:
  *      add recording from radio?
  *      Move code used for FileBrowser to Advanced List view (Copy CF's Mixer)
@@ -136,7 +141,8 @@ namespace DABFMMonkey
                 }
                 catch
                 {
-                    this.CF_displayMessage("Configuration file is corrupt. Replacing.");
+                    //this.CF_displayMessage("Configuration file is corrupt. Replacing.");
+                    CFTools.writeError("DABFMMonkey Configuration file is corrupt. Replacing.");
                     try
                     {
                         File.Delete(ConfigFileName);
@@ -217,11 +223,11 @@ namespace DABFMMonkey
         {
             WriteLog("enableplugin() - start");
             //Let CF know we're an audio plugin
-            this.CF_params.Media.isAudioPlugin = true;      // This is a audio source plugin
-            this.CF_params.Media.bufferOn = _isBufferRadio; // Buffer usage is based on users settings                
-            this.CF_params.Media.visibleOnly = false;       // Audio can continue to play, even if plugin is not visible
-            this.CF_params.supportsRearScreen = false;      // No rear screen support
-            //this.CF_params.Media.useCorePlaybackControl = true;   // Default is true
+            this.CF_params.Media.isAudioPlugin = true;              // This is a audio source plugin
+            this.CF_params.Media.bufferOn = _isBufferRadio;         // Buffer usage is based on users settings                
+            this.CF_params.Media.visibleOnly = false;               // Audio can continue to play, even if plugin is not visible
+            this.CF_params.supportsRearScreen = false;              // No rear screen support
+            this.CF_params.Media.useCorePlaybackControl = true;     // Default is true
             //this.CF_params.hasBasicSettings = true;               // ?
 
             //Init the board
@@ -415,24 +421,24 @@ namespace DABFMMonkey
             {
                 WriteLog("SaveCurrentStatus()");
                 SaveCurrentStatus();    // Save current status
+
+                //Stop everything
+                //if (init && RadioCommand == MonkeyCommand.NONE)
+                WriteLog("Send STOPSTREAM");
+                //RadioCommand = MonkeyCommand.STOPSTREAM;
+                RadioCommand.Enqueue(MonkeyCommand.STOPSTREAM);
+
+                //while (RadioCommand != MonkeyCommand.NONE) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
+                while (RadioCommand.Count > 0) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
+
+                WriteLog("ClearRDSVars()");
+                ClearRDSVars();         // Clear the rds info bars
+
+                //Stop thread for updating the GUI with RDS information
+                WriteLog("Stop the IOComms Thread");
+                boolIOCommsThread = false;
+                threadIOComms.Abort(); // Kill the thread
             }
-
-            //Stop everything
-            //if (init && RadioCommand == MonkeyCommand.NONE)
-            WriteLog("Send STOPSTREAM");
-            //RadioCommand = MonkeyCommand.STOPSTREAM;
-            RadioCommand.Enqueue(MonkeyCommand.STOPSTREAM);
-
-            //while (RadioCommand != MonkeyCommand.NONE) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
-            while (RadioCommand.Count > 0) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
-
-            WriteLog("ClearRDSVars()");
-            ClearRDSVars();         // Clear the rds info bars
-
-            //Stop thread for updating the GUI with RDS information
-            WriteLog("Stop the IOComms Thread");
-            boolIOCommsThread = false;
-            threadIOComms.Abort(); // Kill the thread
 
             // Allow closing of file before exit
             System.Threading.Thread.Sleep(1000);
@@ -960,24 +966,25 @@ namespace DABFMMonkey
                     CF_params.Media.bufferOn = _isBufferRadio;
                     if (_isBufferRadio)
                     {
-                        try
-                        {
-                            CF_params.Media.recordDevice = pluginConfig.ReadField("/APPCONFIG/PLAYBACK");
-                            CF_params.Media.recordLine = pluginConfig.ReadField("/APPCONFIG/LINEIN");
-                        }
-                        catch
-                        {
-                            pluginConfig.WriteField("/APPCONFIG/PLAYBACK", "", true);
-                            pluginConfig.WriteField("/APPCONFIG/LINEIN", "", true);
-                            CF_params.Media.recordDevice = "";
-                            CF_params.Media.recordLine = "";
-                        }
-                  
                         CF_clearRecordBuffer(true);
                         CF_updateBufferStatus(CF_params.pluginName, _isBufferRadio);                       
                     }
-                    WriteLog("CF_params.Media.recordDevice : " + CF_params.Media.recordDevice);
-                    WriteLog("CF_params.Media.recordLine   : " + CF_params.Media.recordLine);
+
+                    //Input device & line
+                    try
+                    {
+                        CF_params.Media.playbackDevice = pluginConfig.ReadField("/APPCONFIG/PLAYBACK");
+                        CF_params.Media.playbackLine = pluginConfig.ReadField("/APPCONFIG/LINEIN");
+                    }
+                    catch
+                    {
+                        pluginConfig.WriteField("/APPCONFIG/PLAYBACK", "", true);
+                        pluginConfig.WriteField("/APPCONFIG/LINEIN", "", true);
+                        CF_params.Media.recordDevice = "";
+                        CF_params.Media.recordLine = "";
+                    }
+                    WriteLog("CF_params.Media.playbackDevice: '" + CF_params.Media.playbackDevice.ToString() + "'");
+                    WriteLog("CF_params.Media.playbackLine  : '" + CF_params.Media.playbackLine.ToString() + "'");
                     
 
                     //Start playing
@@ -1115,7 +1122,7 @@ namespace DABFMMonkey
                 WriteLog("XML DAB Long Station Name: " + boolDABLongName.ToString());
 
                 try { boolEnablePlugin = bool.Parse(this.pluginConfig.ReadField("/APPCONFIG/ENABLEPLUGIN")); }
-                catch { boolEnablePlugin = false;  }
+                catch { boolEnablePlugin = true;  }
                 WriteLog("XML Plugin enabled as Radio: " + boolEnablePlugin.ToString());
 
                 try { boolButtonMode = bool.Parse(this.pluginConfig.ReadField("/APPCONFIG/BUTTONMODE")); }
@@ -1560,36 +1567,77 @@ namespace DABFMMonkey
         {
             WriteLog("OnPowerModeChanged - start()");
             WriteLog("OnPowerModeChanged '" + e.Mode.ToString() + "'");
-           
-            //If suspending
-            if (e.Mode == CFPowerModes.Suspend)
+
+            try
             {
-                //Save current status
-                SaveCurrentStatus();
+                //If suspending
+                if (e.Mode == CFPowerModes.Suspend)
+                {
+                    //Save current status
+                    SaveCurrentStatus();
 
-                WriteLog("Send STOPSTREAM");
-                RadioCommand.Clear();
-                //if (init) RadioCommand = MonkeyCommand.STOPSTREAM;
-                RadioCommand.Enqueue(MonkeyCommand.STOPSTREAM);
-                //while (RadioCommand != MonkeyCommand.NONE) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
-                while (RadioCommand.Count > 0) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
+                    WriteLog("Send STOPSTREAM");
+                    RadioCommand.Clear();
+                    //if (init) RadioCommand = MonkeyCommand.STOPSTREAM;
+                    RadioCommand.Enqueue(MonkeyCommand.STOPSTREAM);
 
-                WriteLog("Send CLOSERADIOPORT");
-                //if (init) RadioCommand = MonkeyCommand.CLOSERADIOPORT;
-                RadioCommand.Enqueue(MonkeyCommand.CLOSERADIOPORT);
-                //while (RadioCommand != MonkeyCommand.NONE) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
-                while (RadioCommand.Count > 0) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
+                    //while (RadioCommand != MonkeyCommand.NONE) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
+                    int max_wait = 25;
+                    while (RadioCommand.Count > 0 && max_wait-- > 0)
+                    {
+                        System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
+                    }
 
-                // Radio no longer initialized
-                threadIOComms.Abort(); // Kill the thread
-                init = false;
-                WriteLog("init '" + init.ToString() + "'");
+                    WriteLog("Send CLOSERADIOPORT");
+                    //if (init) RadioCommand = MonkeyCommand.CLOSERADIOPORT;
+                    RadioCommand.Enqueue(MonkeyCommand.CLOSERADIOPORT);
+                    //while (RadioCommand != MonkeyCommand.NONE) System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
+                    max_wait = 25;
+                    while (RadioCommand.Count > 0 && max_wait-- > 0)
+                    {
+                        System.Threading.Thread.Sleep(100); //Allow time for Comms I/O thread to execute the command
+                    }
+
+                    //If thread is not running, the we force it manually:
+                    if (RadioCommand.Count > 0)
+                    {
+                        WriteLog("Closing port without thread");
+                        if (CloseRadioPort()) WriteLog("Radio port closed"); else WriteLog("Error closing radio port");
+                        init = false;
+                        RadioCommand.Clear(); //Clear the queue, else STOP and CLOSEPORT will execute at resume
+                    }
+                    else
+                    {
+                        try
+                        {
+                            WriteLog("Abort threadIOComms");
+                            // Radio no longer initialized
+                            threadIOComms.Abort(); // Kill the thread
+                        }
+                        catch (SyntaxErrorException errmsg)
+                        {
+                            WriteLog("Failed to abort threadIOComms : " + errmsg.ToString());
+                        }
+                    }
+                }
+            }
+            catch (SyntaxErrorException errmsg)
+            {
+                WriteLog("Failed to 'Suspend' : " + errmsg.ToString());
             }
 
-            //If resuming from sleep
-            if (e.Mode == CFPowerModes.Resume)
+
+            try
             {
-                enableplugin();
+                //If resuming from sleep
+                if (e.Mode == CFPowerModes.Resume)
+                {
+                    enableplugin();
+                }
+            }
+            catch (SyntaxErrorException errmsg)
+            {
+                WriteLog("Failed to 'Resume' : " + errmsg.ToString());
             }
 
             WriteLog("OnPowerModeChanged - end()");
