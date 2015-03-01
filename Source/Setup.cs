@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2012, 2013, 2014, John Jore
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -36,11 +36,6 @@ namespace DABFMMonkey
         //private const string ConfigSection = "/APPCONFIG/";
         //private const string LanguageSection = "/APPLANG/SETUP/";
         //private const string LanguageControlSection = "/APPLANG/DABFMMONKEY/";
-
-        // This is duplicate of hardware.cs. Can duplication be removed?
-        private string[] DABStandardFrequencyIndex = new string[] { "5A", "5B", "5C", "5D", "6A", "6B", "6C", "6D", "7A", "7B", "7C", "7D", "8A", "8B", "8C", "8D", "9A", "9B", "9C", "9D", "10A", "10N", "10B", "10C", "10D", "11A", "11N", "11B", "11C", "11D", "12A", "12N", "12B", "12C", "12D", "13A", "13B", "13C", "13D", "13E", "13F" };
-        private Double[] DABStandardFrequencyMHz = new double[] { 174.928, 176.64, 178.352, 180.064, 181.936, 183.648, 185.360, 187.072, 188.928, 190.64, 192.352, 194.064, 195.936, 197.648, 199.36, 201.072, 202.928, 204.64, 206.352, 208.064, 209.936, 210.096, 211.648, 213.36, 215.072, 216.928, 217.088, 218.64, 220.352, 222.064, 223.936, 224.096, 225.648, 227.36, 229.072, 230.784, 232.496, 234.208, 235.776, 237.488, 239.2 };
-
 #endregion
 
 #region Construction
@@ -94,13 +89,14 @@ namespace DABFMMonkey
                     ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/REGION");
                     ButtonValue[i++] = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/REGION");
 
-                    ButtonHandler[i] = new CFSetupHandler(SetScanStart);
-                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/SCANSTART");
-                    ButtonValue[i++] = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/SCANSTART");
+                    ButtonHandler[i] = new CFSetupHandler(SetVolume);
+                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/VOLUME");
+                    ButtonValue[i++] = this.pluginConfig.ReadField("/APPCONFIG/VOLUME");
 
-                    ButtonHandler[i] = new CFSetupHandler(SetScanEnd);
-                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/SCANEND");
-                    ButtonValue[i++] = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/SCANEND");
+                    ButtonHandler[i] = new CFSetupHandler(SetSLSLayout);
+                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/SLSLAYOUT");
+                    string[] arySLSLayout = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/SLSLAYOUT").ToString().Split(',');
+                    ButtonValue[i++] = arySLSLayout[(sbyte)Enum.Parse(typeof(SLSLayout), this.pluginConfig.ReadField("/APPCONFIG/SLSLAYOUT"))];
 
                     // BOOL BUTTONS (5-8)
                     ButtonHandler[i] = new CFSetupHandler(SetLogEvents);
@@ -111,24 +107,23 @@ namespace DABFMMonkey
                     ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/ENABLEPLUGIN");
                     ButtonValue[i++] = this.pluginConfig.ReadField("/APPCONFIG/ENABLEPLUGIN");
 
-                    ButtonHandler[i] = new CFSetupHandler(SetRescanEvents);
-                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/RESCAN");
-                    ButtonValue[i++] = this.pluginConfig.ReadField("/APPCONFIG/RESCAN");
-
                     ButtonHandler[i] = new CFSetupHandler(SetChinaMode);
                     ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/CHINAMODE");
                     ButtonValue[i++] = this.pluginConfig.ReadField("/APPCONFIG/CHINAMODE");
+
+                    ButtonHandler[i] = new CFSetupHandler(SetLBandMode);
+                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/LBANDMODE");
+                    ButtonValue[i++] = this.pluginConfig.ReadField("/APPCONFIG/LBANDMODE");
                 }
                 else if (currentpage == 2)
                 {
-                    ButtonHandler[i] = new CFSetupHandler(SetVolume);
-                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/VOLUME");
-                    ButtonValue[i++] = this.pluginConfig.ReadField("/APPCONFIG/VOLUME");
+                    ButtonHandler[i] = new CFSetupHandler(SetScanStart);
+                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/SCANSTART");
+                    ButtonValue[i++] = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/SCANSTART");
 
-                    ButtonHandler[i] = new CFSetupHandler(SetSLSLayout);
-                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/SLSLAYOUT");
-                    string[] arySLSLayout = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/SLSLAYOUT").ToString().Split(',');
-                    ButtonValue[i++] = arySLSLayout[(sbyte)Enum.Parse(typeof(SLSLayout), this.pluginConfig.ReadField("/APPCONFIG/SLSLAYOUT"))];
+                    ButtonHandler[i] = new CFSetupHandler(SetScanEnd);
+                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/SCANEND");
+                    ButtonValue[i++] = this.pluginLang.ReadField("/APPLANG/DABFMMONKEY/SCANEND");
 
                     ButtonHandler[i] = new CFSetupHandler(SetPlayBack);
                     ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/PLAYBACK");
@@ -186,7 +181,9 @@ namespace DABFMMonkey
                     ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/DEBUGEVENTS");
                     ButtonValue[i++] = this.pluginConfig.ReadField("/APPCONFIG/DEBUGEVENTS");
 
-                    ButtonHandler[i] = null; ButtonText[i] = ""; ButtonValue[i++] = "";
+                    ButtonHandler[i] = new CFSetupHandler(SetRescanEvents);
+                    ButtonText[i] = this.pluginLang.ReadField("/APPLANG/SETUP/RESCAN");
+                    ButtonValue[i++] = this.pluginConfig.ReadField("/APPCONFIG/RESCAN");
 
                     /*
                     ButtonHandler[i] = new CFSetupHandler(ClearBoardBeforeScan);
@@ -518,15 +515,47 @@ namespace DABFMMonkey
                 object tempobject;
                 string resultvalue, resulttext;
 
+                try { DABFMMonkey.boolDABFMMonkeyChinaMode = bool.Parse(this.pluginConfig.ReadField("/APPCONFIG/CHINAMODE")); }
+                catch { DABFMMonkey.boolDABFMMonkeyChinaMode = false; }
 
-                // Create a listview with the number of items in the Array. We can use the Standard Array, as it contains all from the China band
-                CFControls.CFListViewItem[] textoptions = new CFControls.CFListViewItem[DABStandardFrequencyIndex.Length];
-
-                // Populate the list with the options
-                for (sbyte i = 0; i < DABStandardFrequencyIndex.Length; i++)
+                try { DABFMMonkey.boolDABFMMonkeyLBandMode = bool.Parse(this.pluginConfig.ReadField("/APPCONFIG/LBANDMODE")); }
+                catch { DABFMMonkey.boolDABFMMonkeyLBandMode = false; }
+                
+                //Depending on mode, populate list with different values
+                CFControls.CFListViewItem[] textoptions = null;
+                if (DABFMMonkey.boolDABFMMonkeyChinaMode)
                 {
-                    CFTools.writeLog(PluginName + ": Layout Option='" + DABStandardFrequencyIndex[i] + "'");
-                    textoptions[i] = new CFControls.CFListViewItem(DABStandardFrequencyIndex[i] + " (" + DABStandardFrequencyMHz[i] + "MHz) ", i.ToString(), -1, false);
+                    textoptions = new CFControls.CFListViewItem[DABFMMonkey.DABChinaFrequencyIndex.Length];
+
+                    // Populate the list with the options
+                    for (sbyte i = 0; i < DABFMMonkey.DABChinaFrequencyIndex.Length; i++)
+                    {
+                        CFTools.writeLog(PluginName + ": Layout Option='" + DABFMMonkey.DABChinaFrequencyIndex[i] + "'");
+                        textoptions[i] = new CFControls.CFListViewItem(DABFMMonkey.DABChinaFrequencyIndex[i] + " (" + DABFMMonkey.DABChinaFrequencyMHz[i] + "MHz) ", i.ToString(), -1, false);
+                    }
+                }
+                else if (DABFMMonkey.boolDABFMMonkeyLBandMode)
+                {
+                    textoptions = new CFControls.CFListViewItem[DABFMMonkey.DABLBandFrequencyIndex.Length];
+
+                    // Populate the list with the options
+                    for (sbyte i = 0; i < DABFMMonkey.DABLBandFrequencyIndex.Length; i++)
+                    {
+                        CFTools.writeLog(PluginName + ": Layout Option='" + DABFMMonkey.DABLBandFrequencyIndex[i] + "'");
+                        textoptions[i] = new CFControls.CFListViewItem(DABFMMonkey.DABLBandFrequencyIndex[i] + " (" + DABFMMonkey.DABLBandFrequencyMHz[i] + "MHz) ", i.ToString(), -1, false);
+                    }
+
+                }
+                else
+                {
+                    textoptions = new CFControls.CFListViewItem[DABFMMonkey.DABStandardFrequencyIndex.Length];
+
+                    // Populate the list with the options
+                    for (sbyte i = 0; i < DABFMMonkey.DABStandardFrequencyIndex.Length; i++)
+                    {
+                        CFTools.writeLog(PluginName + ": Layout Option='" + DABFMMonkey.DABStandardFrequencyIndex[i] + "'");
+                        textoptions[i] = new CFControls.CFListViewItem(DABFMMonkey.DABStandardFrequencyIndex[i] + " (" + DABFMMonkey.DABStandardFrequencyMHz[i] + "MHz) ", i.ToString(), -1, false);
+                    }
                 }
 
                 // Display the options
@@ -553,14 +582,48 @@ namespace DABFMMonkey
                 object tempobject;
                 string resultvalue, resulttext;
 
-                // Create a listview with the number of items in the Array. We can use the Standard Array, as it contains all from the China band
-                CFControls.CFListViewItem[] textoptions = new CFControls.CFListViewItem[DABStandardFrequencyIndex.Length];
 
-                // Populate the list with the options
-                for (sbyte i = 0; i < DABStandardFrequencyIndex.Length; i++)
+                try { DABFMMonkey.boolDABFMMonkeyChinaMode = bool.Parse(this.pluginConfig.ReadField("/APPCONFIG/CHINAMODE")); }
+                catch { DABFMMonkey.boolDABFMMonkeyChinaMode = false; }
+
+                try { DABFMMonkey.boolDABFMMonkeyLBandMode = bool.Parse(this.pluginConfig.ReadField("/APPCONFIG/LBANDMODE")); }
+                catch { DABFMMonkey.boolDABFMMonkeyLBandMode = false; }
+
+                //Depending on mode, populate list with different values
+                CFControls.CFListViewItem[] textoptions = null;
+                if (DABFMMonkey.boolDABFMMonkeyChinaMode)
                 {
-                    CFTools.writeLog(PluginName + ": Layout Option='" + DABStandardFrequencyIndex[i] + "'");
-                    textoptions[i] = new CFControls.CFListViewItem(DABStandardFrequencyIndex[i] + " (" + DABStandardFrequencyMHz[i] + "MHz) ", i.ToString(), -1, false);
+                    textoptions = new CFControls.CFListViewItem[DABFMMonkey.DABChinaFrequencyIndex.Length];
+
+                    // Populate the list with the options
+                    for (sbyte i = 0; i < DABFMMonkey.DABChinaFrequencyIndex.Length; i++)
+                    {
+                        CFTools.writeLog(PluginName + ": Layout Option='" + DABFMMonkey.DABChinaFrequencyIndex[i] + "'");
+                        textoptions[i] = new CFControls.CFListViewItem(DABFMMonkey.DABChinaFrequencyIndex[i] + " (" + DABFMMonkey.DABChinaFrequencyMHz[i] + "MHz) ", i.ToString(), -1, false);
+                    }
+                }
+                else if (DABFMMonkey.boolDABFMMonkeyLBandMode)
+                {
+                    textoptions = new CFControls.CFListViewItem[DABFMMonkey.DABLBandFrequencyIndex.Length];
+
+                    // Populate the list with the options
+                    for (sbyte i = 0; i < DABFMMonkey.DABLBandFrequencyIndex.Length; i++)
+                    {
+                        CFTools.writeLog(PluginName + ": Layout Option='" + DABFMMonkey.DABLBandFrequencyIndex[i] + "'");
+                        textoptions[i] = new CFControls.CFListViewItem(DABFMMonkey.DABLBandFrequencyIndex[i] + " (" + DABFMMonkey.DABLBandFrequencyMHz[i] + "MHz) ", i.ToString(), -1, false);
+                    }
+
+                }
+                else
+                {
+                    textoptions = new CFControls.CFListViewItem[DABFMMonkey.DABStandardFrequencyIndex.Length];
+
+                    // Populate the list with the options
+                    for (sbyte i = 0; i < DABFMMonkey.DABStandardFrequencyIndex.Length; i++)
+                    {
+                        CFTools.writeLog(PluginName + ": Layout Option='" + DABFMMonkey.DABStandardFrequencyIndex[i] + "'");
+                        textoptions[i] = new CFControls.CFListViewItem(DABFMMonkey.DABStandardFrequencyIndex[i] + " (" + DABFMMonkey.DABStandardFrequencyMHz[i] + "MHz) ", i.ToString(), -1, false);
+                    }
                 }
 
                 // Display the options
@@ -597,7 +660,18 @@ namespace DABFMMonkey
 
         private void SetChinaMode(ref object value)
         {
-            this.pluginConfig.WriteField("/APPCONFIG/CHINAMODE", value.ToString());
+            this.pluginConfig.WriteField("/APPCONFIG/CHINAMODE", value.ToString(), true);
+
+            //Can't have LBand and Chine enabled at the same time
+            if ((bool)value == true) this.pluginConfig.WriteField("/APPCONFIG/LBANDMODE", false.ToString(), true);
+        }
+
+        private void SetLBandMode(ref object value)
+        {
+            this.pluginConfig.WriteField("/APPCONFIG/LBANDMODE", value.ToString(), true);
+
+            //Can't have LBand and Chine enabled at the same time
+            if ((bool)value == true) this.pluginConfig.WriteField("/APPCONFIG/CHINAMODE", false.ToString(), true);
         }
 
         private void SetEnablePlugin(ref object value)

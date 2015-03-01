@@ -209,7 +209,7 @@ namespace DABFMMonkey
                 
                 // add event handlers
                 this.CF_events.CFPowerModeChanged += new CFPowerModeChangedEventHandler(OnPowerModeChanged); //Hibernation support              
-                this.CF_events.pluginEvent += new CFPluginEventHandler(CF_events_pluginEvent);                
+                this.CF_events.pluginEvent += new CFPluginEventHandler(CF_events_pluginEvent);
 			}
             catch (Exception errmsg)
             {
@@ -1089,6 +1089,10 @@ namespace DABFMMonkey
                 catch { boolDABFMMonkeyChinaMode = false; }
                 WriteLog("XML China Mode: " + boolDABFMMonkeyChinaMode.ToString());
 
+                try { boolDABFMMonkeyLBandMode = bool.Parse(this.pluginConfig.ReadField("/APPCONFIG/LBANDMODE")); }
+                catch { boolDABFMMonkeyLBandMode = false; }
+                WriteLog("XML LBand Mode: " + boolDABFMMonkeyLBandMode.ToString());
+
                 try { boolEnableInternetUsage = bool.Parse(this.pluginConfig.ReadField("/APPCONFIG/ENABLEINTERNETUSAGE")); }
                 catch { boolEnableInternetUsage = false; }
                 WriteLog("XML DAB Enable Internet Usage: " + boolEnableInternetUsage.ToString());
@@ -1445,6 +1449,15 @@ namespace DABFMMonkey
                         //Convert to Chinese index
                         DABFMMonkeyScanStartIndex = (byte)(DABFMMonkeyScanStartIndex + 41);
                     }
+                    else if (boolDABFMMonkeyLBandMode)
+                    {
+                        WriteLog("Using LBand DAB frequencies");
+                        for (DABFMMonkeyScanStartIndex = 0; DABFMMonkeyScanStartIndex < DABLBandFrequencyIndex.Length; DABFMMonkeyScanStartIndex++)
+                            if (DABLBandFrequencyIndex[DABFMMonkeyScanStartIndex].IndexOf(startDAB) >= 0) break;
+
+                        //Convert to LBand index
+                        DABFMMonkeyScanStartIndex = (byte)(DABFMMonkeyScanStartIndex + 72);
+                    }
                     else
                     {
                         WriteLog("Using standard DAB frequencies");
@@ -1465,6 +1478,15 @@ namespace DABFMMonkey
 
                         //Convert to Chinese index
                         DABFMMonkeyScanEndIndex = (byte)(DABFMMonkeyScanEndIndex + 41);
+                    }
+                    else if (boolDABFMMonkeyLBandMode)
+                    {
+                        WriteLog("Using LBand DAB frequencies");
+                        for (DABFMMonkeyScanEndIndex = 0; DABFMMonkeyScanEndIndex < DABLBandFrequencyIndex.Length; DABFMMonkeyScanEndIndex++)
+                            if (DABLBandFrequencyIndex[DABFMMonkeyScanEndIndex].IndexOf(endDAB) >= 0) break;
+
+                        //Convert to LBand index
+                        DABFMMonkeyScanEndIndex = (byte)(DABFMMonkeyScanEndIndex + 72);
                     }
                     else
                     {

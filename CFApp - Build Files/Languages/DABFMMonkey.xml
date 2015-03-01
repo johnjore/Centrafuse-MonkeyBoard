@@ -9,8 +9,7 @@
     </PORT>
     <SCANSTART>5A</SCANSTART>
     <SCANEND>13F</SCANEND>
-    <REGION>
-    </REGION>
+    <REGION></REGION>
     <REGIONLIST>Australia,Norway,UK</REGIONLIST>
     <AUSTRALIA>9A,10B</AUSTRALIA>
     <NORWAY>6D,13F</NORWAY>
@@ -56,6 +55,7 @@
     <SCANSTART>Start Of Scan</SCANSTART>
     <SCANEND>End Of Scan</SCANEND>
     <CHINAMODE>Enable China Mode</CHINAMODE>
+    <LBANDMODE>Enable L-Band Mode</LBANDMODE>
     <REGION>Region (Leave blank to use Scan values)</REGION>
     <NONE>None</NONE>
     <LINEIN>Radio Device</LINEIN>

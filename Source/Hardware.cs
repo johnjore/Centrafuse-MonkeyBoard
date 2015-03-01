@@ -59,7 +59,7 @@ namespace DABFMMonkey
         private Mode STEREOMODE = Mode.UNDEFINED;                               // Auto or forced mono
         private bool boolEnableInternetUsage = false;                           // Allow Internet connectivity
         private bool boolEnableRadioVIS = false;                                // By default, don't use RadioVIS
-        private bool init = false;                                              // Is Radio initialized? Default is not initialized
+        private static bool init = false;                                       // Is Radio initialized? Default is not initialized
         //private bool boolClearBoardBeforeScan = false;                        // Clear board's existing programs when performing a DAB scan?
         
         //RDS information
@@ -80,7 +80,8 @@ namespace DABFMMonkey
         private string[] aryDABStatus = new string[] { "Playing", "Searching", "Tuning", "Stop", "Sorting", "Reconfiguring" };
         private string[] aryDABChannelsLong = new string[] { "N/A" }; // Name of DAB channels stored on board (Long Name)
 
-        private bool boolDABFMMonkeyChinaMode = false; // By default, dont enable China DAB channels
+        public static bool boolDABFMMonkeyChinaMode = false; // By default, dont enable China DAB channels
+        public static bool boolDABFMMonkeyLBandMode = false; // By default, dont enable LBand mode
         private byte DABFMMonkeyScanStartIndex, DABFMMonkeyScanEndIndex; // Start and End for DAB frequency Scanning
         private string DABFMMonkeyRegion = "";
         private DABNameMode boolDABLongName = DABNameMode.Short;
@@ -96,12 +97,16 @@ namespace DABFMMonkey
         private bool boolEnablePlugin = true; //By default, use the plugin to control the radio
 
         //Maps 0 to 40 for standard DAB frequencies
-        private string[] DABStandardFrequencyIndex = new string[] { "5A","5B","5C","5D","6A","6B","6C","6D","7A","7B","7C","7D","8A","8B","8C","8D","9A","9B","9C","9D","10A","10N","10B","10C","10D","11A","11N","11B","11C","11D","12A","12N","12B","12C","12D","13A","13B","13C","13D","13E","13F" };
-        private Double[] DABStandardFrequencyMHz = new double[] { 174.928, 176.64, 178.352, 180.064, 181.936, 183.648, 185.360, 187.072, 188.928, 190.64, 192.352, 194.064, 195.936, 197.648, 199.36, 201.072, 202.928, 204.64, 206.352, 208.064, 209.936, 210.096, 211.648, 213.36, 215.072, 216.928, 217.088, 218.64, 220.352, 222.064, 223.936, 224.096, 225.648, 227.36, 229.072, 230.784, 232.496, 234.208, 235.776, 237.488, 239.2 };
+        public static string[] DABStandardFrequencyIndex = new string[] { "5A","5B","5C","5D","6A","6B","6C","6D","7A","7B","7C","7D","8A","8B","8C","8D","9A","9B","9C","9D","10A","10N","10B","10C","10D","11A","11N","11B","11C","11D","12A","12N","12B","12C","12D","13A","13B","13C","13D","13E","13F" };
+        public static Double[] DABStandardFrequencyMHz = new double[] { 174.928, 176.64, 178.352, 180.064, 181.936, 183.648, 185.360, 187.072, 188.928, 190.64, 192.352, 194.064, 195.936, 197.648, 199.36, 201.072, 202.928, 204.64, 206.352, 208.064, 209.936, 210.096, 211.648, 213.36, 215.072, 216.928, 217.088, 218.64, 220.352, 222.064, 223.936, 224.096, 225.648, 227.36, 229.072, 230.784, 232.496, 234.208, 235.776, 237.488, 239.2 };
 
         // Maps 41 to 71 for China mode. All use of this must add 41 to the index
-        private string[] DABChinaFrequencyIndex = new string[] { "6A","6B","6C","6D","6N","7A","7B","7C","7D","8A","8B","8C","8D","8N","9A","9B","9C","9D","10A","10B","10C","10D","10N","11A","11B","11C","11D","12A","12B","12C","12D" };
-        private Double[] DABChinaFrequencyMHz = new double[] { 168.160, 169.872, 171.584, 173.296, 175.008, 176.720, 178.432, 180.144, 181.856, 184.160, 185.872, 187.584, 189.296, 191.008, 192.720, 194.432, 196.144, 197.856, 200.160, 201.872, 203.584, 205.296, 207.008, 208.720, 210.432, 212.144, 213.856, 216.432, 218.144, 219.856, 221.568 };
+        public static string[] DABChinaFrequencyIndex = new string[] { "6A", "6B", "6C", "6D", "6N", "7A", "7B", "7C", "7D", "8A", "8B", "8C", "8D", "8N", "9A", "9B", "9C", "9D", "10A", "10B", "10C", "10D", "10N", "11A", "11B", "11C", "11D", "12A", "12B", "12C", "12D" };
+        public static Double[] DABChinaFrequencyMHz = new double[] { 168.160, 169.872, 171.584, 173.296, 175.008, 176.720, 178.432, 180.144, 181.856, 184.160, 185.872, 187.584, 189.296, 191.008, 192.720, 194.432, 196.144, 197.856, 200.160, 201.872, 203.584, 205.296, 207.008, 208.720, 210.432, 212.144, 213.856, 216.432, 218.144, 219.856, 221.568 };
+
+        // Maps 72 to 94 for L-Band. All use of this must add 72 to the index
+        public static string[] DABLBandFrequencyIndex = new string[] { "LA", "LB", "LC", "LD", "LE", "LF", "LG", "LH", "LI", "LJ", "LK", "LL", "LM", "LN", "LO", "LP", "LQ", "LR", "LS", "LT", "LU", "LV", "LW" };
+        public static Double[] DABLBandFrequencyMHz = new double[] { ﻿1452.960, 1454.672, 1456.384, 1458.096, 1459.808, 1461.520, 1463.232, 1464.944, 1466.656, ﻿1468.368, 1470.080, 1471.792, 1473.504, 1475.216, 1476.928, 1478.640, 1480.352, 1482.064, 1483.776, 1485.488, 1487.200, 1488.912, 1490.624 };
 
         # endregion
 
@@ -462,7 +467,13 @@ namespace DABFMMonkey
                     //Stop the threads
                     newboolSCANFM = false;
                     boolIOCommsThread = false;
-                    threadIOComms.Abort();
+
+                    //Abort if running
+                    if (threadIOComms != null)
+                    {
+                        this.threadIOComms.Abort();
+                        this.threadIOComms = null;
+                    }
 
                     //Save current status
                     //SaveCurrentStatus();
@@ -471,14 +482,21 @@ namespace DABFMMonkey
                     if (WaitForBoard()) if (StopStream() == false) WriteLog("Error stopping stream"); else WriteLog("Stream Stopped");
                     if (WaitForBoard()) if (CloseRadioPort() == false) WriteLog("Error closing radio port"); else WriteLog("Radio port closed");
 
-                    // Radio no longer initialized
-                    this.BeginInvoke(new MethodInvoker(delegate { init = false; }));
-                                        
                     //Mixer
                     if (!(_isBufferRadio || !(CF_params.Media.recordDevice != "")))
                     {
                         this.WriteLog("CF_pluginClose():  Calling CF_setMixerMute(true)");
                         base.CF_setMixerMute(CF_params.Media.recordDevice, CF_params.Media.recordLine, false, true);
+                    }
+
+                    // Radio no longer initialized
+                    try
+                    {
+                        this.BeginInvoke(new MethodInvoker(delegate { init = false; }));
+                    }
+                    catch (Exception ex)
+                    {
+                        WriteLog("Failed to call invoke, " + ex.ToString());
                     }
                 }
             }
@@ -1572,7 +1590,7 @@ namespace DABFMMonkey
                 }
                 catch (Exception errmsg)
                 {
-                    WriteLog("Failed to get currnet StereoMode, " + errmsg.ToString());
+                    WriteLog("Failed to get current StereoMode, " + errmsg.ToString());
                 }
 
                 //Signal Strenght
